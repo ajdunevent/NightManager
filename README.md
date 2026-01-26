@@ -25,6 +25,7 @@
 * Set up a third systemd timer (using OnBootSec delay?) that calls nightynight@check.service to make sure the correct on/off service ran last
   * ... unless I do subpoint above
 * Store Feedback Profile, Theme Style, Ambient Light Sensor, and Night Light states before changes so they can be restored
+* Have option to schedule changes separately and/or follow GNOME automatic Night Light time
 * Make a less manual installation method
 * Make a settings app and .desktop file for settings changes instead of editing text files
 
