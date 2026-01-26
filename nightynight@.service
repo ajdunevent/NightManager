@@ -1,8 +1,0 @@
-[Unit]
-Description=Set night mode %i
-Conflicts=nightynight@on.service nightynight@off.service
-After=nightynight@on.service
-
-[Service]
-Type=oneshot
-ExecStart=/home/furios/.local/bin/nightynight %i
