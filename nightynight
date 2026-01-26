@@ -1,0 +1,64 @@
+#!/bin/bash
+## TODO: on/off flag detection
+## TODO: store states of dark/light mode, nightlight, autobrightness, and feedback profile
+
+MODE=$1
+
+CONFIG_FILE="$HOME/.config/nightynight.conf"
+
+## define defaults
+# nightlight 0=don't enable, 1=enable
+DEF_NLT_ON=1
+# dark mode 0=don't enable, 1=enable
+DEF_DRK_ON=1
+# autobrightness 0=don't enable, 1=enable
+DEF_BRT_ON=1
+# feedback profile 0=don't change, 1=silent, 2=quiet
+DEF_FB_LEV=1
+
+if [ ! -f "$CONFIG_FILE" ]; then
+  cat <<EOF > "${CONFIG_FILE}"
+# nightlight 0=don't enable, 1=enable
+NLT_ON=$DEF_NLT_ON
+# dark mode 0=don't enable, 1=enable
+DRK_ON=$DEF_DRK_ON
+# autobrightness 0=don't enable, 1=enable
+BRT_ON=$DEF_BRT_ON
+# feedback profile 0=don't change, 1=silent, 2=quiet
+FB_LEV=$DEF_FB_LEV
+EOF
+fi
+
+source "$CONFIG_FILE" 2>/dev/null
+#Fallbacks
+: "${NLT_ON:=$DEF_NLT_ON}"
+: "${DRK_ON:=$DEF_DRK_ON}"
+: "${BRT_ON:=$DEF_BRT_ON}"
+: "${FB_LEV:=$DEF_FB_LEV}"
+
+#LAST_ON=$(systemctl show nightynight-on.timer --property=LastTriggerUSecRealtime --value)
+#LAST_OFF=$(systemctl show nightynight-off.timer --property=LastTriggerUSecRealtime --value)
+
+#if [ "$MODE" == "on" ] && [ "$LAST_ON" -gt "$LAST_OFF" ]; then
+if [ "$MODE" == "on" ]; then
+  echo "Setting up Nighty-night mode."
+  [[ $NLT_ON -eq 1 ]] && echo "  Enabling Nightlight" && gsettings set org.gnome.settings-daemon.plugins.color night-light-enabled true
+  [[ $BRT_ON -eq 1 ]] && echo "  Enabling Ambient Light Sensor" && gsettings set org.gnome.settings-daemon.plugins.power ambient-enabled true
+  [[ $DRK_ON -eq 1 ]] && echo "  Switching theme to Dark Style" && gsettings set org.gnome.desktop.interface color-scheme prefer-dark
+  if [[ $FB_LEV -eq 1 ]]; then
+    echo "  Setting Feedback Profile to Silent" && gsettings set org.sigxcpu.feedbackd profile silent
+  elif [[ $FB_LEV -eq 2 ]]; then
+    echo "  Setting Feedback Profile to Quiet" && gsettings set org.sigxcpu.feedbackd profile quiet
+  fi
+
+#elif [ "$MODE" == "off" ] && [ "$LAST_OFF" -gt "$LAST_ON" ]; then
+elif [ "$MODE" == "off" ]; then
+  echo "Turning off Nighty-night mode."
+  [[ $NLT_ON -ne 0 ]] && echo "  Disabling Nightlight" && gsettings set org.gnome.settings-daemon.plugins.color night-light-enabled false
+  [[ $BRT_ON -ne 0 ]] && echo "  Disabling Ambient Light Sensor" && gsettings set org.gnome.settings-daemon.plugins.power ambient-enabled false
+  [[ $DRK_ON -ne 0 ]] && echo "  Switching theme to Default Style" && gsettings set org.gnome.desktop.interface color-scheme default
+  [[ $FB_LEV -ne 0 ]] && echo "  Setting Feedback Profile to Full" && gsettings set org.sigxcpu.feedbackd profile full
+
+else
+    echo "Skipping nightynight $MODE; it is not the most recent scheduled state."
+fi

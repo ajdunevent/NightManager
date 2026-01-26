@@ -1,0 +1,10 @@
+[Unit]
+Description=Scheduled night mode
+
+[Timer]
+OnCalendar=*-*-* 20:30:00
+Persistent=true
+Unit=nightynight@on.service
+
+[Install]
+WantedBy=timers.target
