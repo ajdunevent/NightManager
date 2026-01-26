@@ -1,7 +1,10 @@
 [Unit]
 Description=Set night mode %i
-Conflicts=nightynight@on.service nightynight@off.service
-After=nightynight@on.service
+# These were my attempt to prevent both on and off from
+# triggering in the event that both had been missed but
+# it causes more problems than not
+#Conflicts=nightynight@on.service nightynight@off.service
+#After=nightynight@on.service
 
 [Service]
 Type=oneshot
