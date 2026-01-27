@@ -5,7 +5,7 @@ Description=Scheduled end to night mode
 OnCalendar=Mon..Fri 07:00:00
 OnCalendar=Sat,Sun 09:00:00
 Persistent=true
-Unit=nightynight@off.service
+Unit=nightynight@auto.service
 
 [Install]
 WantedBy=timers.target
