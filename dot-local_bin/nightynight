@@ -1,7 +1,8 @@
 #!/bin/bash
-## TODO: Add author stuff, etc
+## TODO: store states of dark/light mode, nightlight, autobrightness, and feedback profile
 
 MODE="${1:-auto}"
+NOW="$(date +%s)"
 
 CONFIG_DIR="$HOME/.config/nightynight"
 mkdir -p "$CONFIG_DIR"
@@ -38,16 +39,20 @@ source "$CONFIG_FILE" 2>/dev/null
 : "${FB_LEV:=$DEF_FB_LEV}"
 
 STATE_FILE="$CONFIG_DIR/restore.conf"
-NTL_STATE=0
+NLT_STATE=0
 BRT_STATE=0
 DRK_STATE=0
 FBK_STATE=0
 
-[ "$MODE" == "auto" ] && [ $(date -d "$(systemctl --user show --value --property NextElapseUSecRealtime nightynight-on.timer)" +%s) -gt $(date -d "$(systemctl --user show --value --property NextElapseUSecRealtime nightynight-off.timer)" +%s) ] && MODE="on" || MODE="off"
+if [ "$MODE" == "auto" ]; then
+  NEXTON=$(date -d "$(systemctl --user list-timers --all --no-legend | grep nightynight-on.timer | sed 's/[- ]*//' | awk '{print $2, $3}')" +%s)
+  NEXTOFF=$(date -d "$(systemctl --user list-timers --all --no-legend | grep nightynight-off.timer | sed 's/[- ]*//' | awk '{print $2, $3}')" +%s)
+  [[ "$NOW" -lt "$NEXTOFF" ]] && [[ "$NEXTON" -le "$NOW" || "$NEXTON" -gt "$NEXTOFF" ]] && MODE="on"
+  [[ "$NOW" -lt "$NEXTON" ]] && [[ "$NEXTOFF" -le "$NOW" || "$NEXTOFF" -gt "$NEXTON" ]] && MODE="off"
+fi
 
 if [ "$MODE" == "on" ]; then
   echo "Setting up Nighty-night mode."
-
   [ -f "$STATE_FILE" ] && mv "$STATE_FILE" "${STATE_FILE}.bak" && echo "Previous restoration settings were found and moved to ${STATE_FILE}.bak"
   [[ $NLT_ON -eq 1 ]] && NLT_STATE="$(gsettings get org.gnome.settings-daemon.plugins.color night-light-enabled)" && echo "  Recording current Night Light state ($NLT_STATE)" && echo "  Enabling Night Light" && gsettings set org.gnome.settings-daemon.plugins.color night-light-enabled true
   [[ $BRT_ON -eq 1 ]] && BRT_STATE="$(gsettings get org.gnome.settings-daemon.plugins.power ambient-enabled)" && echo "  Recording current Ambient Light Sensor state ($BRT_STATE)" && echo "  Enabling Ambient Light Sensor" && gsettings set org.gnome.settings-daemon.plugins.power ambient-enabled true
@@ -58,24 +63,19 @@ if [ "$MODE" == "on" ]; then
   elif [[ $FB_LEV -eq 2 ]]; then
     echo "  Setting Feedback Profile to Quiet" && gsettings set org.sigxcpu.feedbackd profile quiet
   fi
-
   cat <<EOF > "${STATE_FILE}"
-    NTL_STATE=$NLT_STATE
+    NLT_STATE=$NLT_STATE
     BRT_STATE=$BRT_STATE
     DRK_STATE=$DRK_STATE
     FBK_STATE=$FBK_STATE
 EOF
-
 elif [ "$MODE" == "off" ]; then
-
   [ -f "$STATE_FILE" ] && source "$STATE_FILE" 2>/dev/null && rm "$STATE_FILE"
-
   echo "Turning off Nighty-night mode."
   [[ $NLT_ON -ne 0 ]] && [[ $NLT_STATE != 0 ]] && echo "  Restoring Night Light state ($NLT_STATE)" && gsettings set org.gnome.settings-daemon.plugins.color night-light-enabled "$NLT_STATE"
   [[ $BRT_ON -ne 0 ]] && [[ $BRT_STATE != 0 ]] && echo "  Restoring Ambient Light Sensor state ($BRT_STATE)" && gsettings set org.gnome.settings-daemon.plugins.power ambient-enabled "$BRT_STATE"
   [[ $DRK_ON -ne 0 ]] && [[ $DRK_STATE != 0 ]] && echo "  Restoring theme style ($DRK_STATE)" && gsettings set org.gnome.desktop.interface color-scheme "$DRK_STATE"
   [[ $FB_LEV -ne 0 ]] && [[ $FBK_STATE != 0 ]] && echo "  Restoring Feedback Profile ($FBK_STATE)" && gsettings set org.sigxcpu.feedbackd profile "$FBK_STATE"
-
 else
     echo "No change is being made to Nighty-night mode."
 fi
