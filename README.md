@@ -11,11 +11,15 @@
   * Store current states of anything being changed (for restoration in the morning)
   * Set Feedback Profile to Quiet (vibration only) or Silent as configured
   * Optionally set Theme Style to Dark
+  * Optionally change Accent Color
+  * Optionally change Icon Theme 
   * Optionally enable Ambient Light Sensor (automatic brightness adjustment)
   * Optionally enable Night Light
 * At set morning time:
   * If Feedback Profile change was configured, restore original
   * If Theme Style change was configured, restore original
+  * If Accent Color change was configured, restore original
+  * If Icon Theme change was configured, restore original
   * If Ambient Light Sensor was configured, restore original
   * If Night Light was configured, restore original
 
