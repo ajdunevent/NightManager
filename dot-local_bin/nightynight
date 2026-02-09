@@ -11,10 +11,14 @@ CONFIG_FILE="$CONFIG_DIR/nightynight.conf"
 ## define defaults
 # nightlight 0=don't enable, 1=enable
 DEF_NLT_ON=1
-# dark mode 0=don't enable, 1=enable
-DEF_DRK_ON=1
 # autobrightness 0=don't enable, 1=enable
 DEF_BRT_ON=1
+# dark mode 0=don't enable, 1=enable
+DEF_DRK_ON=1
+# accent color to set (blue, green, orange, pink, purple, red, slate, teal, yellow) or 0=no change
+DEF_ACT_ON="slate"
+# icon theme to set (e.g., "Adwaita-slate") or 0=no change
+DEF_ICN_ON=0
 # feedback profile 0=don't change, 1=silent, 2=quiet
 DEF_FB_LEV=1
 
@@ -22,10 +26,14 @@ if [ ! -f "$CONFIG_FILE" ]; then
   cat <<EOF > "${CONFIG_FILE}"
 # nightlight 0=don't enable, 1=enable
 NLT_ON=$DEF_NLT_ON
-# dark mode 0=don't enable, 1=enable
-DRK_ON=$DEF_DRK_ON
 # autobrightness 0=don't enable, 1=enable
 BRT_ON=$DEF_BRT_ON
+# dark mode 0=don't enable, 1=enable
+DRK_ON=$DEF_DRK_ON
+# accent color to set (blue, green, orange, pink, purple, red, slate, teal, yellow) or 0=no change
+ACT_ON=$DEF_ACT_ON
+# icon theme to set (e.g., "Adwaita-slate") or 0=no change
+ICN_ON=$DEF_ICN_ON
 # feedback profile 0=don't change, 1=silent, 2=quiet
 FB_LEV=$DEF_FB_LEV
 EOF
@@ -34,14 +42,18 @@ fi
 source "$CONFIG_FILE" 2>/dev/null
 #Fallbacks
 : "${NLT_ON:=$DEF_NLT_ON}"
-: "${DRK_ON:=$DEF_DRK_ON}"
 : "${BRT_ON:=$DEF_BRT_ON}"
+: "${DRK_ON:=$DEF_DRK_ON}"
+: "${ACT_ON:=$DEF_ACT_ON}"
+: "${ICN_ON:=$DEF_ICN_ON}"
 : "${FB_LEV:=$DEF_FB_LEV}"
 
 STATE_FILE="$CONFIG_DIR/restore.conf"
 NLT_STATE=0
 BRT_STATE=0
 DRK_STATE=0
+ACT_STATE=0
+ICN_STATE=0
 FBK_STATE=0
 
 if [ "$MODE" == "auto" ]; then
@@ -57,6 +69,8 @@ if [ "$MODE" == "on" ]; then
   [[ $NLT_ON -eq 1 ]] && NLT_STATE="$(gsettings get org.gnome.settings-daemon.plugins.color night-light-enabled)" && echo "  Recording current Night Light state ($NLT_STATE)" && echo "  Enabling Night Light" && gsettings set org.gnome.settings-daemon.plugins.color night-light-enabled true
   [[ $BRT_ON -eq 1 ]] && BRT_STATE="$(gsettings get org.gnome.settings-daemon.plugins.power ambient-enabled)" && echo "  Recording current Ambient Light Sensor state ($BRT_STATE)" && echo "  Enabling Ambient Light Sensor" && gsettings set org.gnome.settings-daemon.plugins.power ambient-enabled true
   [[ $DRK_ON -eq 1 ]] && DRK_STATE="$(gsettings get org.gnome.desktop.interface color-scheme)" && echo "  Recording current theme style ($DRK_STATE)" && echo "  Switching theme to Dark Style" && gsettings set org.gnome.desktop.interface color-scheme prefer-dark
+  [[ $ACT_ON != "0" ]] && ACT_STATE="$(gsettings get org.gnome.desktop.interface accent-color)" && echo "  Recording current accent color ($ACT_STATE)" && echo "  Switching accent color to $ACT_ON" && gsettings set org.gnome.desktop.interface accent-color "$ACT_ON"
+  [[ $ICN_ON != "0" ]] && ICN_STATE="$(gsettings get org.gnome.desktop.interface icon-theme)" && echo "  Recording current icon theme ($ICN_STATE)" && echo "  Switching icon theme to $ICN_ON" && gsettings set org.gnome.desktop.interface icon-theme "$ICN_ON"
   [[ $FB_LEV -gt 0 ]] && FBK_STATE="$(gsettings get org.sigxcpu.feedbackd profile)" && echo "  Recording current Feedback Profile ($FBK_STATE)"
   if [[ $FB_LEV -eq 1 ]]; then
     echo "  Setting Feedback Profile to Silent" && gsettings set org.sigxcpu.feedbackd profile silent
@@ -67,14 +81,18 @@ if [ "$MODE" == "on" ]; then
     NLT_STATE=$NLT_STATE
     BRT_STATE=$BRT_STATE
     DRK_STATE=$DRK_STATE
+    ACT_STATE=$ACT_STATE
+    ICN_STATE=$ICN_STATE
     FBK_STATE=$FBK_STATE
 EOF
 elif [ "$MODE" == "off" ]; then
   [ -f "$STATE_FILE" ] && source "$STATE_FILE" 2>/dev/null && rm "$STATE_FILE"
   echo "Turning off Nighty-night mode."
-  [[ $NLT_ON -ne 0 ]] && [[ $NLT_STATE != 0 ]] && echo "  Restoring Night Light state ($NLT_STATE)" && gsettings set org.gnome.settings-daemon.plugins.color night-light-enabled "$NLT_STATE"
+  [[ $NLT_ON -ne 0 ]] && [[ $NLT_STATE != 0 ]] && echo "  Restoring Night Light state ($NLT_STATE)" && busctl --user set-property org.gnome.Mutter.DisplayConfig /org/gnome/Mutter/DisplayConfig org.gnome.Mutter.DisplayConfig PowerSaveMode i 0 && sleep 1 && gsettings set org.gnome.settings-daemon.plugins.color night-light-enabled "$NLT_STATE"
   [[ $BRT_ON -ne 0 ]] && [[ $BRT_STATE != 0 ]] && echo "  Restoring Ambient Light Sensor state ($BRT_STATE)" && gsettings set org.gnome.settings-daemon.plugins.power ambient-enabled "$BRT_STATE"
   [[ $DRK_ON -ne 0 ]] && [[ $DRK_STATE != 0 ]] && echo "  Restoring theme style ($DRK_STATE)" && gsettings set org.gnome.desktop.interface color-scheme "$DRK_STATE"
+  [[ $ACT_ON != "0" ]] && [[ $ACT_STATE != 0 ]] && echo "  Restoring accent color ($ACT_STATE)" && gsettings set org.gnome.desktop.interface accent-color "$ACT_STATE"
+  [[ $ICN_ON != "0" ]] && [[ $ICN_STATE != 0 ]] && echo "  Restoring icon theme ($ICN_STATE)" && gsettings set org.gnome.desktop.interface icon-theme "$ICN_STATE"
   [[ $FB_LEV -ne 0 ]] && [[ $FBK_STATE != 0 ]] && echo "  Restoring Feedback Profile ($FBK_STATE)" && gsettings set org.sigxcpu.feedbackd profile "$FBK_STATE"
 else
     echo "No change is being made to Nighty-night mode."
