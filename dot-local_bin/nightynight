@@ -1,5 +1,4 @@
 #!/bin/bash
-## TODO: store states of dark/light mode, nightlight, autobrightness, and feedback profile
 
 MODE="${1:-auto}"
 NOW="$(date +%s)"
@@ -66,7 +65,7 @@ fi
 if [ "$MODE" == "on" ]; then
   echo "Setting up Nighty-night mode."
   [ -f "$STATE_FILE" ] && mv "$STATE_FILE" "${STATE_FILE}.bak" && echo "Previous restoration settings were found and moved to ${STATE_FILE}.bak"
-  [[ $NLT_ON -eq 1 ]] && NLT_STATE="$(gsettings get org.gnome.settings-daemon.plugins.color night-light-enabled)" && echo "  Recording current Night Light state ($NLT_STATE)" && echo "  Enabling Night Light" && gsettings set org.gnome.settings-daemon.plugins.color night-light-enabled true
+  [[ $NLT_ON -eq 1 ]] && NLT_STATE="$(gsettings get org.gnome.settings-daemon.plugins.color night-light-enabled)" && echo "  Recording current Night Light state ($NLT_STATE)" && echo "  Enabling Night Light" && busctl --user set-property org.gnome.Mutter.DisplayConfig /org/gnome/Mutter/DisplayConfig org.gnome.Mutter.DisplayConfig PowerSaveMode i 0 && sleep 1 && gsettings set org.gnome.settings-daemon.plugins.color night-light-enabled true
   [[ $BRT_ON -eq 1 ]] && BRT_STATE="$(gsettings get org.gnome.settings-daemon.plugins.power ambient-enabled)" && echo "  Recording current Ambient Light Sensor state ($BRT_STATE)" && echo "  Enabling Ambient Light Sensor" && gsettings set org.gnome.settings-daemon.plugins.power ambient-enabled true
   [[ $DRK_ON -eq 1 ]] && DRK_STATE="$(gsettings get org.gnome.desktop.interface color-scheme)" && echo "  Recording current theme style ($DRK_STATE)" && echo "  Switching theme to Dark Style" && gsettings set org.gnome.desktop.interface color-scheme prefer-dark
   [[ $ACT_ON != "0" ]] && ACT_STATE="$(gsettings get org.gnome.desktop.interface accent-color)" && echo "  Recording current accent color ($ACT_STATE)" && echo "  Switching accent color to $ACT_ON" && gsettings set org.gnome.desktop.interface accent-color "$ACT_ON"
