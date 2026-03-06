@@ -30,7 +30,7 @@ jobs:
 
       - name: Make tag_name
         id: vars
-        run:  printf 'tag_name=%s.%s\n' $(date +"%%Y%%m%%d") ${{ github.run_number }} >> $GITHUB_ENV
+        run:  printf 'tag_name=%s.%s\n' $(date +"%Y%m%d") ${{ github.run_number }} >> $GITHUB_ENV
 
       - name: Build release
         id: build
