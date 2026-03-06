@@ -13,8 +13,7 @@ jobs:
         uses: actions/checkout@master
 
       - name: Setup
-        steps:
-          - run: apt install nfpm
+        run: apt install nfpm
 
       - name: Make tag_name
         id: vars
