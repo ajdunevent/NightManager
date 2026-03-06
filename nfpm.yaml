@@ -26,13 +26,13 @@ contents:
       mode: 0755
 
   - src: systemd_user/nightynight-off.timer
-    dst: /usr/lib/systemd/usr/nightynight-off.timer
+    dst: /usr/lib/systemd/user/nightynight-off.timer
 
   - src: systemd_user/nightynight-on.timer
-    dst: /usr/lib/systemd/usr/nightynight-on.timer
+    dst: /usr/lib/systemd/user/nightynight-on.timer
 
   - src: systemd_user/nightynight@.service
-    dst: /usr/lib/systemd/usr/nightynight@.service
+    dst: /usr/lib/systemd/user/nightynight@.service
 
   - src: dot-config_nightynight/nightynight.conf
     dst: /home/furios/.config/nightynight/nightynight.conf
