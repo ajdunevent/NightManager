@@ -34,7 +34,7 @@ jobs:
 
       - name: Build release
         id: build
-        run: !
+        run: |
           mkdir -p build
           printf 'artifact-path=build\n' >> $GITHUB_OUTPUT
           VERSION=${{ env.tag_name }} RELEASE=1 nfpm pkg -p deb -t build
