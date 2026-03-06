@@ -43,8 +43,8 @@ jobs:
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "Night Manager Release Bot"
-          git tag -a "v${TAG}" -m "Automated release v${TAG}"
-          git push origin "v${TAG}"
+          git tag -a "v${{ env.tag_name }}" -m "Automated release v${TAG}"
+          git push origin "v${{ env.tag_name }}"
           
       - name: Release
         uses: actions/create-release@v1
