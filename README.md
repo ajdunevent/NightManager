@@ -37,6 +37,14 @@
 * Run: ```systemctl --user daemon-reload && systemctl --user enable --now nightynight-on.timer nightynight-off.timer```
 
 
+### How to change the times
+* Night Manager uses systemd timers, which are defined in files in `/usr/lib/systemd/user/`. Instead of sudo editing those timers, and to prevent package updates to Night Manager, define systemd "drop-ins" for your start and stop times.
+* Read more about systemd drop-ins with `man systemd.unit`
+* Create on and off directories: ```mkdir -p ~/.config/systemd/user/nightynight-off.timer.d ~/.config/systemd/user/nightynight-on.timer.d```
+* Add the schedule you want to files named `10-override.conf` in each of those directories, each containing one or more line systemd `OnCalendar` directive (see `man systemd.timer`). E.g.: ```echo "OnCalendar=*-*-* 06:00:00" > ~/.config/systemd/user/nightynight-off.timer.d/10-overrides.conf``` 
+* Run: ```systemctl --user daemon-reload && systemctl --user restart nightynight-on.timer nightynight-off.timer```
+
+
 ### How to uninstall
 * Run: ```systemctl --user disable --now nightynight-on.timer nightynight-off.timer```
 * Remove the files you added to the directories above and any now empty directories that had to be created

@@ -3,4 +3,4 @@ Description=Set night mode %i
 
 [Service]
 Type=oneshot
-ExecStart=/home/furios/.local/bin/nightynight %i
+ExecStart=/usr/bin/nightynight %i
