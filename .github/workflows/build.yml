@@ -5,9 +5,20 @@ on:
     branches:
       - packaged
 
+permissions:
+  contents: write
+  packages: write
+  id-token: write
+
+env:
+  GIT_USER_NAME: Night Manager Releasebot
+  GIT_USER_EMAIL: actions@github.com
+  
 jobs:
   build:
     runs-on: ubuntu-slim
+    outputs:
+      artifact-path: ${{ steps.build.outputs.artifact-path }}
     steps:
       - name: Checkout
         uses: actions/checkout@master
@@ -21,6 +32,13 @@ jobs:
         id: vars
         run:  printf 'tag_name=%s.%s\n' $(date +"%%Y%%m%%d") ${{ github.run_number }} >> $GITHUB_ENV
 
+      - name: Build release
+        id: build
+        run: !
+          mkdir -p build
+          printf 'artifact-path=build\n' >> $GITHUB_OUTPUT
+          VERSION=${{ env.tag_name }} RELEASE=1 nfpm pkg -p deb -t build
+
       - name: Tag
         run: |
           git config --local user.email "action@github.com"
@@ -28,10 +46,6 @@ jobs:
           git tag -a "v${TAG}" -m "Automated release v${TAG}"
           git push origin "v${TAG}"
           
-      - name: Build release
-        run: !
-          VERSION=${{ env.tag_name }} RELEASE=1 nfpm pkg -p deb
-
       - name: Release
         uses: actions/create-release@v1
         env:
