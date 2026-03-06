@@ -7,15 +7,15 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-slim
     steps:
       - name: Checkout
         uses: actions/checkout@master
 
       - name: Setup
         run: |
-          sudo apt update
-          sudo apt install nfpm
+          curl -LO https://github.com/goreleaser/nfpm/releases/download/v2.45.0/nfpm_2.45.0_amd64.deb
+          sudo dpkg -i nfpm_2.45.0_amd64.deb
 
       - name: Make tag_name
         id: vars
