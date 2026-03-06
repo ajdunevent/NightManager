@@ -55,3 +55,10 @@ jobs:
           release_name: Release ${{ env.tag_name }}
           body: |
             Automated release ${{ env.tag_name }}
+
+      - name: Upload artifact
+        uses: softprops/action-gh-release@v1
+        with:
+          files: build/*
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
