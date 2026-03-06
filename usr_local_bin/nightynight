@@ -3,9 +3,9 @@
 MODE="${1:-auto}"
 NOW="$(date +%s)"
 
-CONFIG_DIR="$HOME/.config/nightynight"
-mkdir -p "$CONFIG_DIR"
-CONFIG_FILE="$CONFIG_DIR/nightynight.conf"
+STATE_DIR="/home/furios/.local/state/nightynight"
+mkdir -p STATE_DIR
+CONFIG_FILE="/etc/default/nightynight"
 
 ## define defaults
 # nightlight 0=don't enable, 1=enable
@@ -21,23 +21,6 @@ DEF_ICN_ON=0
 # feedback profile 0=don't change, 1=silent, 2=quiet
 DEF_FB_LEV=1
 
-if [ ! -f "$CONFIG_FILE" ]; then
-  cat <<EOF > "${CONFIG_FILE}"
-# nightlight 0=don't enable, 1=enable
-NLT_ON=$DEF_NLT_ON
-# autobrightness 0=don't enable, 1=enable
-BRT_ON=$DEF_BRT_ON
-# dark mode 0=don't enable, 1=enable
-DRK_ON=$DEF_DRK_ON
-# accent color to set (blue, green, orange, pink, purple, red, slate, teal, yellow) or 0=no change
-ACT_ON=$DEF_ACT_ON
-# icon theme to set (e.g., "Adwaita-slate") or 0=no change
-ICN_ON=$DEF_ICN_ON
-# feedback profile 0=don't change, 1=silent, 2=quiet
-FB_LEV=$DEF_FB_LEV
-EOF
-fi
-
 source "$CONFIG_FILE" 2>/dev/null
 #Fallbacks
 : "${NLT_ON:=$DEF_NLT_ON}"
@@ -47,7 +30,7 @@ source "$CONFIG_FILE" 2>/dev/null
 : "${ICN_ON:=$DEF_ICN_ON}"
 : "${FB_LEV:=$DEF_FB_LEV}"
 
-STATE_FILE="$CONFIG_DIR/restore.conf"
+STATE_FILE="$STATE_DIR/restore.conf"
 NLT_STATE=0
 BRT_STATE=0
 DRK_STATE=0
