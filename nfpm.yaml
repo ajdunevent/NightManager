@@ -1,0 +1,48 @@
+# nfpm configuration file
+#
+# check https://nfpm.goreleaser.com/configuration for detailed usage
+#
+name: Night Manager
+arch: arm64
+platform: linux
+version: ${VERSION}
+release: ${RELEASE}
+version_schema: none
+section: default
+priority: extra
+maintainer: aj@dunevent.net
+description: |
+  A todotxt-based executive list manager GUI
+vendor: "@ajdunevent"
+license: GPL 3.0
+homepage: https://github.com/ajdunevent/NightManager
+deb:
+  fields:
+    Bugs: https://github.com/ajdunevent/NightManager/issues
+contents:
+  - src: usr_local_bin/nightynight
+    dst: /usr/bin/nightynight
+
+  - src: systemd_user/nightynight-off.timer
+    dst: /usr/lib/systemd/usr/nightynight-off.timer
+
+  - src: systemd_user/nightynight-on.timer
+    dst: /usr/lib/systemd/usr/nightynight-on.timer
+
+  - src: systemd_user/nightynight@.service
+    dst: /usr/lib/systemd/usr/nightynight@.service
+
+  - src: dot-config_nightynight/nightynight.conf
+    dst: /home/furios/.config/nightynight/nightynight.conf
+
+  - src: dot-config_systemd_user/off-override.conf
+    dst: /home/furios/.config/systemd/user/nightynight-off.timer.d/10-override.conf
+  
+  - src: dot-config_systemd_user/on-override.conf
+    dst: /home/furios/.config/systemd/user/nightynight-on.timer.d/10-override.conf
+
+  - src: LICENSE
+    dst: /usr/share/doc/nightmanager/LICENSE
+
+  - src: README.md
+    dst: /usr/share/doc/nightmanager/README.md
