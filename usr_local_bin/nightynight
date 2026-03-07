@@ -5,7 +5,7 @@ NOW="$(date +%s)"
 
 STATE_DIR="/home/furios/.local/state/nightynight"
 mkdir -p STATE_DIR
-CONFIG_FILE="/etc/default/nightynight"
+CONFIG_FILE="/home/furios/.config/nightynight/nightynight.conf"
 
 ## define defaults
 # nightlight 0=don't enable, 1=enable
