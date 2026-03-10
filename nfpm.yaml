@@ -36,18 +36,21 @@ contents:
 
   - src: dot-config_nightynight/nightynight.conf
     dst: /home/furios/.config/nightynight/nightynight.conf
+    type: config|noreplace
     file_info:
       owner: furios
       group: furios
 
   - src: dot-config_systemd_user/off-override.conf
     dst: /home/furios/.config/systemd/user/nightynight-off.timer.d/10-override.conf
+    type: config|noreplace
     file_info:
       owner: furios
       group: furios
   
   - src: dot-config_systemd_user/on-override.conf
     dst: /home/furios/.config/systemd/user/nightynight-on.timer.d/10-override.conf
+    type: config|noreplace
     file_info:
       owner: furios
       group: furios
