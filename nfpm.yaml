@@ -12,7 +12,7 @@ section: default
 priority: extra
 maintainer: Sean E. Russell <ser@ser1.net>
 description: |
-  A todotxt-based executive list manager GUI
+  A tool to automate night mode for Phosh
 vendor: aj@dunevent.net
 license: GPL 3.0
 homepage: https://github.com/ajdunevent/NightManager
