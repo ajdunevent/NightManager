@@ -3,7 +3,7 @@ name: Build Night Manager
 on:
   push:
     branches:
-      - packaged
+      - releases
 
 permissions:
   contents: write
