@@ -1,0 +1,66 @@
+# nfpm configuration file
+#
+# check https://nfpm.goreleaser.com/configuration for detailed usage
+#
+name: Night-Manager
+arch: arm64
+platform: linux
+version: ${VERSION}
+release: ${RELEASE}
+version_schema: none
+section: default
+priority: extra
+maintainer: Sean E. Russell <ser@ser1.net>
+description: |
+  A tool to automate night mode for Phosh
+vendor: aj@dunevent.net
+license: GPL 3.0
+homepage: https://github.com/ajdunevent/NightManager
+deb:
+  fields:
+    Bugs: https://github.com/ajdunevent/NightManager/issues
+contents:
+  - src: usr_local_bin/nightynight
+    dst: /usr/bin/nightynight
+    file_info:
+      mode: 0755
+
+  - src: systemd_user/nightynight-off.timer
+    dst: /usr/lib/systemd/user/nightynight-off.timer
+
+  - src: systemd_user/nightynight-on.timer
+    dst: /usr/lib/systemd/user/nightynight-on.timer
+
+  - src: systemd_user/nightynight@.service
+    dst: /usr/lib/systemd/user/nightynight@.service
+
+  - src: dot-config_nightynight/nightynight.conf
+    dst: /home/furios/.config/nightynight/nightynight.conf
+    type: config|noreplace
+    file_info:
+      owner: furios
+      group: furios
+
+  - src: dot-config_systemd_user/off-override.conf
+    dst: /home/furios/.config/systemd/user/nightynight-off.timer.d/10-override.conf
+    type: config|noreplace
+    file_info:
+      owner: furios
+      group: furios
+  
+  - src: dot-config_systemd_user/on-override.conf
+    dst: /home/furios/.config/systemd/user/nightynight-on.timer.d/10-override.conf
+    type: config|noreplace
+    file_info:
+      owner: furios
+      group: furios
+
+  - src: LICENSE
+    dst: /usr/share/doc/nightmanager/LICENSE
+
+  - src: README.md
+    dst: /usr/share/doc/nightmanager/README.md
+scripts:
+  postinstall: ./scripts/postinstall.sh
+  preremove: ./scripts/preremove.sh
+  postremove: ./scripts/postremove.sh
