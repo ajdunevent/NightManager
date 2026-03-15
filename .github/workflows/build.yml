@@ -37,7 +37,7 @@ jobs:
         run: |
           mkdir -p build
           VERSION=${{ env.tag_name }} RELEASE=1 nfpm pkg -p deb -t build/
-          cp build/*[0-9].deb build/NightManager_latest.deb
+          cp build/*.deb build/NightManager_latest.deb
           printf 'artifact-path=build\n' >> $GITHUB_OUTPUT
 
       - name: Tag
