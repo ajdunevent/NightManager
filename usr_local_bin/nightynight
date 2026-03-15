@@ -4,7 +4,7 @@ MODE="${1:-auto}"
 NOW="$(date +%s)"
 
 STATE_DIR="/home/furios/.local/state/nightynight"
-mkdir -p STATE_DIR
+mkdir -p $STATE_DIR
 CONFIG_FILE="/home/furios/.config/nightynight/nightynight.conf"
 
 ## define defaults
