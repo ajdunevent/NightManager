@@ -30,36 +30,30 @@ jobs:
 
       - name: Make tag_name
         id: vars
-        run:  printf 'tag_name=%s.%s\n' $(date +"%Y%m%d") ${{ github.run_number }} >> $GITHUB_ENV
+        run: printf 'tag_name=%s.%s\n' $(date +"%Y%m%d") ${{ github.run_number }} >> $GITHUB_ENV
 
       - name: Build release
         id: build
         run: |
           mkdir -p build
+          VERSION=${{ env.tag_name }} RELEASE=1 nfpm pkg -p deb -t build/
+          cp build/*[0-9].deb build/NightManager_latest.deb
           printf 'artifact-path=build\n' >> $GITHUB_OUTPUT
-          VERSION=${{ env.tag_name }} RELEASE=1 nfpm pkg -p deb -t build
 
       - name: Tag
         run: |
-          git config --local user.email "action@github.com"
-          git config --local user.name "Night Manager Release Bot"
-          git tag -a "v${{ env.tag_name }}" -m "Automated release v${TAG}"
+          git config --local user.email "${{ env.GIT_USER_EMAIL }}"
+          git config --local user.name "${{ env.GIT_USER_NAME }}"
+          git tag -a "v${{ env.tag_name }}" -m "Automated release v${{ env.tag_name }}"
           git push origin "v${{ env.tag_name }}"
           
-      - name: Release
-        uses: actions/create-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Upload artifact
+        uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ env.tag_name }}
-          release_name: Release ${{ env.tag_name }}
+          name: Release ${{ env.tag_name }}
           body: |
             Automated release ${{ env.tag_name }}
-
-      - name: Upload artifact
-        uses: softprops/action-gh-release@v1
-        with:
-          tag_name: ${{ env.tag_name }}
-          files: build/*
+          files: build/*.deb
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
