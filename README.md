@@ -29,27 +29,25 @@
 * Make a settings app and .desktop file for settings changes instead of editing text files
 
 
-### How to install:
-* Download a .deb from the [Releases page](https://github.com/ajdunevent/NightManager/releases)
-* Open a terminal
-* Run `dpkg -i <path-to-downloaded-file>`
-
-
-### How to change the times
-* **(Optional)** Read more about systemd drop-ins with `man systemd.unit`
-* Edit the file `10-override.conf` in `~/.config/systemd/user/nightynight-on.timer.d` (or `...-off...`) and change, add, or remove `OnCalendar` lines to get the desired behavior.
-* Run: ```systemctl --user daemon-reload && systemctl --user restart nightynight-on.timer nightynight-off.timer```
-
-
-### How to uninstall
-Run:
+### Installation:
 ```bash
-$ systemctl --user disable --now nightynight-on.timer nightynight-off.timer
-$ dpkg -r Night-Manager
+wget -O NightManager_latest.deb https://github.com/ajdunevent/NightManager/releases/latest/download/NightManager_latest.deb
+sudo apt install ./NightManager_latest.deb
 ```
 
-**Note** that this will purge any changes you've made to the overrides files, because that's just how dpkg rolls. This may be worked around in a future release.
+
+### Configuration:
+* Edit `~/.config/nightynight/nightynight.conf` to set the desired nighttime mode behaviors.
+* Set nighttime enable time(s) using `OnCalendar` line(s) in `~/.config/systemd/user/nightynight-on.timer.d/10-override.conf`
+* Set nighttime disable time(s) using `OnCalendar` line(s) in `~/.config/systemd/user/nightynight-off.timer.d/10-override.conf`
+* Run: `systemctl --user daemon-reload && systemctl --user restart nightynight-on.timer nightynight-off.timer`
+
+
+### Uninstallation:
+```bash
+sudo apt remove nightmanager
+```
 
 
 ### Shout out
-* [FuriLabs](https://furilabs.com) for making the FLX1s, the first mobile Linux phone I've ever been able to comfortably (enjoyably even!) daily drive.
+* [FuriLabs](https://furilabs.com) for making the FLX1s, the first mobile Linux phone many of us have ever been able to comfortably (enjoyably even!) daily drive.
