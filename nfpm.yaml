@@ -2,8 +2,8 @@
 #
 # check https://nfpm.goreleaser.com/configuration for detailed usage
 #
-name: Night-Manager
-arch: arm64
+name: NightManager
+arch: all
 platform: linux
 version: ${VERSION}
 release: ${RELEASE}
