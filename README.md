@@ -12,7 +12,7 @@
   * Set Feedback Profile to Quiet (vibration only) or Silent as configured
   * Optionally set Theme Style to Dark
   * Optionally change Accent Color
-  * Optionally change Icon Theme 
+  * Optionally change Icon Theme (perfect with [Adwaita-colors](https://github.com/dpejoh/Adwaita-colors)!)
   * Optionally enable Ambient Light Sensor (automatic brightness adjustment)
   * Optionally enable Night Light
 * At set morning time:
