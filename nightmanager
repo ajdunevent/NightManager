@@ -52,7 +52,7 @@ if [ "$MODE" == "on" ]; then
     PSM_STATE=$(busctl --user get-property org.gnome.Mutter.DisplayConfig /org/gnome/Mutter/DisplayConfig org.gnome.Mutter.DisplayConfig PowerSaveMode) && \
     echo "  Enabling Night Light" && busctl --user set-property org.gnome.Mutter.DisplayConfig /org/gnome/Mutter/DisplayConfig org.gnome.Mutter.DisplayConfig PowerSaveMode i 0 && sleep 1 && \
     gsettings set org.gnome.settings-daemon.plugins.color night-light-enabled true && sleep 1 && \
-    busctl --user set-property org.gnome.Mutter.DisplayConfig /org/gnome/Mutter/DisplayConfig org.gnome.Mutter.DisplayConfig PowerSaveMode "$PSM_STATE"
+    busctl --user set-property org.gnome.Mutter.DisplayConfig /org/gnome/Mutter/DisplayConfig org.gnome.Mutter.DisplayConfig PowerSaveMode $PSM_STATE
   [[ $BRT_ON -eq 1 ]] && BRT_STATE="$(gsettings get org.gnome.settings-daemon.plugins.power ambient-enabled)" && echo "  Recording current Ambient Light Sensor state ($BRT_STATE)" && \
     echo "  Enabling Ambient Light Sensor" && gsettings set org.gnome.settings-daemon.plugins.power ambient-enabled true
   [[ $DRK_ON -eq 1 ]] && DRK_STATE="$(gsettings get org.gnome.desktop.interface color-scheme)" && echo "  Recording current theme style ($DRK_STATE)" && \
@@ -82,7 +82,7 @@ elif [ "$MODE" == "off" ]; then
     PSM_STATE=$(busctl --user get-property org.gnome.Mutter.DisplayConfig /org/gnome/Mutter/DisplayConfig org.gnome.Mutter.DisplayConfig PowerSaveMode) && \
     busctl --user set-property org.gnome.Mutter.DisplayConfig /org/gnome/Mutter/DisplayConfig org.gnome.Mutter.DisplayConfig PowerSaveMode i 0 && sleep 1 && \
     gsettings set org.gnome.settings-daemon.plugins.color night-light-enabled "$NLT_STATE" && sleep 1 && \
-    busctl --user set-property org.gnome.Mutter.DisplayConfig /org/gnome/Mutter/DisplayConfig org.gnome.Mutter.DisplayConfig PowerSaveMode "$PSM_STATE"
+    busctl --user set-property org.gnome.Mutter.DisplayConfig /org/gnome/Mutter/DisplayConfig org.gnome.Mutter.DisplayConfig PowerSaveMode $PSM_STATE
   [[ $BRT_ON -ne 0 ]] && [[ $BRT_STATE != 0 ]] && echo "  Restoring Ambient Light Sensor state ($BRT_STATE)" && gsettings set org.gnome.settings-daemon.plugins.power ambient-enabled "$BRT_STATE"
   [[ $DRK_ON -ne 0 ]] && [[ $DRK_STATE != 0 ]] && echo "  Restoring theme style ($DRK_STATE)" && gsettings set org.gnome.desktop.interface color-scheme "$DRK_STATE"
   [[ $ACT_ON != "0" ]] && [[ $ACT_STATE != 0 ]] && echo "  Restoring accent color ($ACT_STATE)" && gsettings set org.gnome.desktop.interface accent-color "$ACT_STATE"
