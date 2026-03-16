@@ -48,11 +48,19 @@ fi
 if [ "$MODE" == "on" ]; then
   echo "Setting up night mode."
   [ -f "$STATE_FILE" ] && mv "$STATE_FILE" "${STATE_FILE}.bak" && echo "Previous restoration settings were found and moved to ${STATE_FILE}.bak"
-  [[ $NLT_ON -eq 1 ]] && NLT_STATE="$(gsettings get org.gnome.settings-daemon.plugins.color night-light-enabled)" && echo "  Recording current Night Light state ($NLT_STATE)" && echo "  Enabling Night Light" && busctl --user set-property org.gnome.Mutter.DisplayConfig /org/gnome/Mutter/DisplayConfig org.gnome.Mutter.DisplayConfig PowerSaveMode i 0 && sleep 1 && gsettings set org.gnome.settings-daemon.plugins.color night-light-enabled true
-  [[ $BRT_ON -eq 1 ]] && BRT_STATE="$(gsettings get org.gnome.settings-daemon.plugins.power ambient-enabled)" && echo "  Recording current Ambient Light Sensor state ($BRT_STATE)" && echo "  Enabling Ambient Light Sensor" && gsettings set org.gnome.settings-daemon.plugins.power ambient-enabled true
-  [[ $DRK_ON -eq 1 ]] && DRK_STATE="$(gsettings get org.gnome.desktop.interface color-scheme)" && echo "  Recording current theme style ($DRK_STATE)" && echo "  Switching theme to Dark Style" && gsettings set org.gnome.desktop.interface color-scheme prefer-dark
-  [[ $ACT_ON != "0" ]] && ACT_STATE="$(gsettings get org.gnome.desktop.interface accent-color)" && echo "  Recording current accent color ($ACT_STATE)" && echo "  Switching accent color to $ACT_ON" && gsettings set org.gnome.desktop.interface accent-color "$ACT_ON"
-  [[ $ICN_ON != "0" ]] && ICN_STATE="$(gsettings get org.gnome.desktop.interface icon-theme)" && echo "  Recording current icon theme ($ICN_STATE)" && echo "  Switching icon theme to $ICN_ON" && gsettings set org.gnome.desktop.interface icon-theme "$ICN_ON"
+  [[ $NLT_ON -eq 1 ]] && NLT_STATE="$(gsettings get org.gnome.settings-daemon.plugins.color night-light-enabled)" && echo "  Recording current Night Light state ($NLT_STATE)" && \
+    PSM_STATE=$(busctl --user get-property org.gnome.Mutter.DisplayConfig /org/gnome/Mutter/DisplayConfig org.gnome.Mutter.DisplayConfig PowerSaveMode) && \
+    echo "  Enabling Night Light" && busctl --user set-property org.gnome.Mutter.DisplayConfig /org/gnome/Mutter/DisplayConfig org.gnome.Mutter.DisplayConfig PowerSaveMode i 0 && sleep 1 && \
+    gsettings set org.gnome.settings-daemon.plugins.color night-light-enabled true && sleep 1 && \
+    busctl --user set-property org.gnome.Mutter.DisplayConfig /org/gnome/Mutter/DisplayConfig org.gnome.Mutter.DisplayConfig PowerSaveMode $PSM_STATE
+  [[ $BRT_ON -eq 1 ]] && BRT_STATE="$(gsettings get org.gnome.settings-daemon.plugins.power ambient-enabled)" && echo "  Recording current Ambient Light Sensor state ($BRT_STATE)" && \
+    echo "  Enabling Ambient Light Sensor" && gsettings set org.gnome.settings-daemon.plugins.power ambient-enabled true
+  [[ $DRK_ON -eq 1 ]] && DRK_STATE="$(gsettings get org.gnome.desktop.interface color-scheme)" && echo "  Recording current theme style ($DRK_STATE)" && \
+    echo "  Switching theme to Dark Style" && gsettings set org.gnome.desktop.interface color-scheme prefer-dark
+  [[ $ACT_ON != "0" ]] && ACT_STATE="$(gsettings get org.gnome.desktop.interface accent-color)" && echo "  Recording current accent color ($ACT_STATE)" && \
+    echo "  Switching accent color to $ACT_ON" && gsettings set org.gnome.desktop.interface accent-color "$ACT_ON"
+  [[ $ICN_ON != "0" ]] && ICN_STATE="$(gsettings get org.gnome.desktop.interface icon-theme)" && echo "  Recording current icon theme ($ICN_STATE)" && \
+    echo "  Switching icon theme to $ICN_ON" && gsettings set org.gnome.desktop.interface icon-theme "$ICN_ON"
   [[ $FB_LEV -gt 0 ]] && FBK_STATE="$(gsettings get org.sigxcpu.feedbackd profile)" && echo "  Recording current Feedback Profile ($FBK_STATE)"
   if [[ $FB_LEV -eq 1 ]]; then
     echo "  Setting Feedback Profile to Silent" && gsettings set org.sigxcpu.feedbackd profile silent
@@ -70,7 +78,11 @@ EOF
 elif [ "$MODE" == "off" ]; then
   [ -f "$STATE_FILE" ] && source "$STATE_FILE" 2>/dev/null && rm "$STATE_FILE"
   echo "Turning off night mode."
-  [[ $NLT_ON -ne 0 ]] && [[ $NLT_STATE != 0 ]] && echo "  Restoring Night Light state ($NLT_STATE)" && busctl --user set-property org.gnome.Mutter.DisplayConfig /org/gnome/Mutter/DisplayConfig org.gnome.Mutter.DisplayConfig PowerSaveMode i 0 && sleep 1 && gsettings set org.gnome.settings-daemon.plugins.color night-light-enabled "$NLT_STATE"
+  [[ $NLT_ON -ne 0 ]] && [[ $NLT_STATE != 0 ]] && echo "  Restoring Night Light state ($NLT_STATE)" && \
+    PSM_STATE=$(busctl --user get-property org.gnome.Mutter.DisplayConfig /org/gnome/Mutter/DisplayConfig org.gnome.Mutter.DisplayConfig PowerSaveMode) && \
+    busctl --user set-property org.gnome.Mutter.DisplayConfig /org/gnome/Mutter/DisplayConfig org.gnome.Mutter.DisplayConfig PowerSaveMode i 0 && sleep 1 && \
+    gsettings set org.gnome.settings-daemon.plugins.color night-light-enabled "$NLT_STATE" && sleep 1 && \
+    busctl --user set-property org.gnome.Mutter.DisplayConfig /org/gnome/Mutter/DisplayConfig org.gnome.Mutter.DisplayConfig PowerSaveMode $PSM_STATE
   [[ $BRT_ON -ne 0 ]] && [[ $BRT_STATE != 0 ]] && echo "  Restoring Ambient Light Sensor state ($BRT_STATE)" && gsettings set org.gnome.settings-daemon.plugins.power ambient-enabled "$BRT_STATE"
   [[ $DRK_ON -ne 0 ]] && [[ $DRK_STATE != 0 ]] && echo "  Restoring theme style ($DRK_STATE)" && gsettings set org.gnome.desktop.interface color-scheme "$DRK_STATE"
   [[ $ACT_ON != "0" ]] && [[ $ACT_STATE != 0 ]] && echo "  Restoring accent color ($ACT_STATE)" && gsettings set org.gnome.desktop.interface accent-color "$ACT_STATE"
