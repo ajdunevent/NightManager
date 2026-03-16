@@ -111,14 +111,19 @@ while true; do
       DISP_E[$i]="<span color='red'><b>${DOW[$i]}</b></span>"; VALID=0
     fi
   done
-  [[ $VALID -eq 1 ]] && break
+  
+  NLT_ON=$([[ "$NLT" == "TRUE" ]] && echo 1 || echo 0)
+  BRT_ON=$([[ "$BRT" == "TRUE" ]] && echo 1 || echo 0)
+  DRK_ON=$([[ "$DRK" == "TRUE" ]] && echo 1 || echo 0)
+  ACT_TOGGLE="$ACT_T"; ACT_ON="$NEW_ACT"
+  ICN_TOGGLE="$ICN_T"; ICN_ON="$NEW_ICN"
+  FBK_TOGGLE="$FBK_T"; FB_LEV=$([[ "$NEW_FBK" == "Silent" ]] && echo 1 || echo 2)
 
-  [[ "$NLT" == "TRUE" ]] && NLT_ON=1 || NLT_ON=0
-  [[ "$BRT" == "TRUE" ]] && BRT_ON=1 || BRT_ON=0
-  [[ "$DRK" == "TRUE" ]] && DRK_ON=1 || DRK_ON=0
-  [[ "$ACT_T" == "TRUE" ]] && ACT_ON="$NEW_ACT" || ACT_ON="0"
-  [[ "$ICN_T" == "TRUE" ]] && ICN_ON="$NEW_ICN" || ICN_ON="0"
-  [[ "$FBK_T" == "TRUE" ]] && FB_LEV=$([[ "$NEW_FBK" == "Silent" ]] && echo 1 || echo 2) || FB_LEV=0
+  ACT_LIST=$(echo "blue!green!orange!pink!purple!red!slate!teal!yellow" | sed "s/\b$NEW_ACT\b/^$NEW_ACT/")
+  ICN_LIST=$(python3 -c 'import os; from gi.repository import GLib; dirs = GLib.get_system_data_dirs() + [GLib.get_user_data_dir()]; themes = set(); [themes.add(d) for p in dirs for d in (os.listdir(os.path.join(p, "icons")) if os.path.exists(os.path.join(p, "icons")) else []) if os.path.exists(os.path.join(p, "icons", d, "index.theme"))]; print("!".join(sorted(themes)))' 2>/dev/null | sed "s/\b$NEW_ICN\b/^$NEW_ICN/")
+  FBK_LIST=$(echo "Silent!Quiet" | sed "s/\b$NEW_FBK\b/^$NEW_FBK/")
+
+  [[ $VALID -eq 1 ]] && break
 done
 
 save_timer() {
@@ -155,16 +160,10 @@ save_timer "$OFF_OVERRIDE" "${E_VALS[@]}"
 systemctl --user daemon-reload
 
 cat <<EOF > "$CONFIG_FILE"
-# nightlight 0=don't enable, 1=enable
-NLT_ON=$([[ "$NLT" == "TRUE" ]] && echo 1 || echo 0)
-# autobrightness 0=don't enable, 1=enable
-BRT_ON=$([[ "$BRT" == "TRUE" ]] && echo 1 || echo 0)
-# dark mode 0=don't enable, 1=enable
-DRK_ON=$([[ "$DRK" == "TRUE" ]] && echo 1 || echo 0)
-# accent color to set (blue, green, orange, pink, purple, red, slate, teal, yellow) or 0=no change
-ACT_ON="$([[ "$ACT_T" == "TRUE" ]] && echo "$NEW_ACT" || echo "0")"
-# icon theme to set (e.g., "Adwaita-slate") or 0=no change
-ICN_ON="$([[ "$ICN_T" == "TRUE" ]] && echo "$NEW_ICN" || echo "0")"
-# feedback profile 0=don't change, 1=silent, 2=quiet
-FB_LEV=$FB_LEV
+NLT_ON=$NLT_ON
+BRT_ON=$BRT_ON
+DRK_ON=$DRK_ON
+ACT_ON="$([[ "$ACT_TOGGLE" == "TRUE" ]] && echo "$ACT_ON" || echo "0")"
+ICN_ON="$([[ "$ICN_TOGGLE" == "TRUE" ]] && echo "$ICN_ON" || echo "0")"
+FB_LEV=$([[ "$FBK_TOGGLE" == "TRUE" ]] && echo "$FB_LEV" || echo 0)
 EOF
