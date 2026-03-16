@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=NightManager Configuration
+Comment=Manage Night Mode Behaviors and Schedules
+Exec=/usr/bin/nightmanconfig
+Icon=NightManager
+Terminal=false
+Categories=Settings;DesktopSettings;GTK;
+Keywords=night;light;dark;theme;schedule;

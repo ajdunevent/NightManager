@@ -1,3 +1,3 @@
 #!/usr/bin/bash
 
-systemctl --machine=furios@.host --user disable --now nightynight-off.timer nightynight-on.timer
+systemctl --machine=furios@.host --user disable --now nightmanager-off.timer nightmanager-on.timer

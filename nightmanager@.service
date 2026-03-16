@@ -3,4 +3,4 @@ Description=Set night mode %i
 
 [Service]
 Type=oneshot
-ExecStart=/usr/bin/nightynight %i
+ExecStart=/usr/bin/nightmanager %i
