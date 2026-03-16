@@ -1,0 +1,170 @@
+#!/bin/bash
+
+CONFIG_FILE="/home/furios/.config/nightmanager/nightmanager.conf"
+ON_OVERRIDE="/home/furios/.config/systemd/user/nightmanager-on.timer.d/10-override.conf"
+OFF_OVERRIDE="/home/furios/.config/systemd/user/nightmanager-off.timer.d/10-override.conf"
+
+get_day_time() {
+  local file=$1; local target_day=$2; local default=$3
+  local days_map=(Mon Tue Wed Thu Fri Sat Sun)
+  
+  [[ ! -f "$file" ]] && echo "$default" && return
+
+  while read -r line; do
+    [[ "$line" != OnCalendar=* ]] && continue
+    local raw_val="${line#*=}"
+    
+    local time_val=$(echo "$raw_val" | grep -oE "[0-9]{2}:[0-9]{2}")
+    [[ -z "$time_val" ]] && continue
+
+    if [[ "$raw_val" == "* " || "$raw_val" == "*-*-* "* || "$raw_val" =~ ^[0-9]{2}:[0-9]{2} ]]; then
+      echo "$time_val" && return
+    fi
+
+    local day_spec="${raw_val%% *}"
+    IFS=',' read -ra segments <<< "$day_spec"
+    for seg in "${segments[@]}"; do
+      if [[ "$seg" == *..* ]]; then
+        local start="${seg%%..*}"; local end="${seg##*..}"
+        local in_range=0
+        for d in "${days_map[@]}"; do
+          [[ "$d" == "$start" ]] && in_range=1
+          if [[ $in_range -eq 1 ]]; then
+            [[ "$d" == "$target_day" ]] && echo "$time_val" && return
+          fi
+          [[ "$d" == "$end" ]] && break
+        done
+      elif [[ "$seg" == "$target_day" ]]; then
+        echo "$time_val" && return
+      fi
+    done
+  done < "$file"
+  
+  echo "$default"
+}
+
+[[ -f "$CONFIG_FILE" ]] && source "$CONFIG_FILE"
+
+S_VALS=(); E_VALS=()
+SHORT=(Mon Tue Wed Thu Fri Sat Sun)
+DOW=("Monday" "Tuesday" "Wednesday" "Thursday" "Friday" "Saturday" "Sunday")
+
+for i in {0..6}; do
+  S_VALS[$i]=$(get_day_time "$ON_OVERRIDE" "${SHORT[$i]}" "20:30")
+  E_VALS[$i]=$(get_day_time "$OFF_OVERRIDE" "${SHORT[$i]}" "07:00")
+done
+
+ACT_TOGGLE="TRUE"; ACT_VAL="$ACT_ON"; [[ "$ACT_ON" == "0" || -z "$ACT_ON" ]] && ACT_TOGGLE="FALSE" && ACT_VAL="slate"
+ACT_LIST=$(echo "blue!green!orange!pink!purple!red!slate!teal!yellow" | sed "s/\b$ACT_VAL\b/^$ACT_VAL/")
+ICN_TOGGLE="TRUE"; ICN_VAL="$ICN_ON"; [[ "$ICN_ON" == "0" || -z "$ICN_ON" ]] && ICN_TOGGLE="FALSE" && ICN_VAL="Adwaita"
+ICN_LIST=$(python3 -c 'import os; from gi.repository import GLib; dirs = GLib.get_system_data_dirs() + [GLib.get_user_data_dir()]; themes = set(); [themes.add(d) for p in dirs for d in (os.listdir(os.path.join(p, "icons")) if os.path.exists(os.path.join(p, "icons")) else []) if os.path.exists(os.path.join(p, "icons", d, "index.theme"))]; print("!".join(sorted(themes)))' 2>/dev/null | sed "s/\b$ICN_VAL\b/^$ICN_VAL/")
+
+FBK_TOGGLE="TRUE"; [[ "$FB_LEV" == "0" || -z "$FB_LEV" ]] && FBK_TOGGLE="FALSE"
+FBK_LIST=$(echo "Silent!Quiet" | sed "s/\b$( [[ "$FB_LEV" == "1" ]] && echo "Silent" || echo "Quiet" )\b/^&/")
+
+DISP_S=("${DOW[@]}")
+DISP_E=("${DOW[@]}")
+
+while true; do
+  DATA=$(yad --form --title="NightManager Config" \
+    --window-icon="preferences-desktop-appearance" \
+    --width=400 --height=500 --scroll --separator="|" \
+    --field="<b>Night Mode Behaviors</b>:LBL" "" \
+    --field="Enable Night Light:CHK" "$([[ "$NLT_ON" == "1" ]] && echo "TRUE" || echo "FALSE")" \
+    --field="Enable Ambient Light Sensor:CHK" "$([[ "$BRT_ON" == "1" ]] && echo "TRUE" || echo "FALSE")" \
+    --field="Enable Dark Theme Style:CHK" "$([[ "$DRK_ON" == "1" ]] && echo "TRUE" || echo "FALSE")" \
+    --field="Change Accent Color:CHK" "$ACT_TOGGLE" \
+    --field="    Accent Color:CB" "$ACT_LIST" \
+    --field="Change Icon Theme:CHK" "$ICN_TOGGLE" \
+    --field="    Icon Theme:CB" "$ICN_LIST" \
+    --field="Change Feedback Level:CHK" "$FBK_TOGGLE" \
+    --field="    Feedback Level:CB" "$FBK_LIST" \
+    --field="<b>Night Mode Enable Time</b>:LBL" "" \
+    --field="${DISP_S[0]}:ENTRY" "${S_VALS[0]}" --field="${DISP_S[1]}:ENTRY" "${S_VALS[1]}" \
+    --field="${DISP_S[2]}:ENTRY" "${S_VALS[2]}" --field="${DISP_S[3]}:ENTRY" "${S_VALS[3]}" \
+    --field="${DISP_S[4]}:ENTRY" "${S_VALS[4]}" --field="${DISP_S[5]}:ENTRY" "${S_VALS[5]}" \
+    --field="${DISP_S[6]}:ENTRY" "${S_VALS[6]}" \
+    --field="<b>Night Mode Disable Time</b>:LBL" "" \
+    --field="${DISP_E[0]}:ENTRY" "${E_VALS[0]}" --field="${DISP_E[1]}:ENTRY" "${E_VALS[1]}" \
+    --field="${DISP_E[2]}:ENTRY" "${E_VALS[2]}" --field="${DISP_E[3]}:ENTRY" "${E_VALS[3]}" \
+    --field="${DISP_E[4]}:ENTRY" "${E_VALS[4]}" --field="${DISP_E[5]}:ENTRY" "${E_VALS[5]}" \
+    --field="${DISP_E[6]}:ENTRY" "${E_VALS[6]}" \
+  )
+
+  [[ $? -ne 0 ]] && exit 0
+
+  IFS="|" read -r _ NLT BRT DRK ACT_T NEW_ACT ICN_T NEW_ICN FBK_T NEW_FBK _ \
+    SM_V ST_V SW_V STH_V SF_V SSA_V SSU_V _ \
+    EM_V ET_V EW_V ETH_V EF_V ESA_V ESU_V <<< "$DATA"
+
+  S_VALS=("$SM_V" "$ST_V" "$SW_V" "$STH_V" "$SF_V" "$SSA_V" "$SSU_V")
+  E_VALS=("$EM_V" "$ET_V" "$EW_V" "$ETH_V" "$EF_V" "$ESA_V" "$ESU_V")
+  
+  VALID=1
+  DISP_S=("${DOW[@]}")
+  DISP_E=("${DOW[@]}")
+  for i in {0..6}; do
+    if ! [[ "${S_VALS[$i]}" =~ ^([01][0-9]|2[0-3]):[0-5][0-9]$ ]]; then
+      DISP_S[$i]="<span color='red'><b>${DOW[$i]}</b></span>"; VALID=0
+    fi
+    if ! [[ "${E_VALS[$i]}" =~ ^([01][0-9]|2[0-3]):[0-5][0-9]$ ]]; then
+      DISP_E[$i]="<span color='red'><b>${DOW[$i]}</b></span>"; VALID=0
+    fi
+  done
+  [[ $VALID -eq 1 ]] && break
+
+  [[ "$NLT" == "TRUE" ]] && NLT_ON=1 || NLT_ON=0
+  [[ "$BRT" == "TRUE" ]] && BRT_ON=1 || BRT_ON=0
+  [[ "$DRK" == "TRUE" ]] && DRK_ON=1 || DRK_ON=0
+  [[ "$ACT_T" == "TRUE" ]] && ACT_ON="$NEW_ACT" || ACT_ON="0"
+  [[ "$ICN_T" == "TRUE" ]] && ICN_ON="$NEW_ICN" || ICN_ON="0"
+  [[ "$FBK_T" == "TRUE" ]] && FB_LEV=$([[ "$NEW_FBK" == "Silent" ]] && echo 1 || echo 2) || FB_LEV=0
+done
+
+save_timer() {
+  local file=$1; shift
+  local -a vals=("$@")
+  local days_map=(Mon Tue Wed Thu Fri Sat Sun)
+  mkdir -p "$(dirname "$file")"
+  {
+    echo "[Timer]"
+    echo "OnCalendar="
+    declare -A groups
+    for i in {0..6}; do groups["${vals[$i]}"]+="$i "; done
+    for t in "${!groups[@]}"; do
+      local ids=(${groups[$t]})
+      local out=""
+      local pattern=$(echo "${groups[$t]}" | xargs)
+      if [[ ${#ids[@]} -eq 7 ]]; then
+        out="*-*-* "
+      elif [[ "$pattern" == "0 1 2 3 4" ]]; then
+        out="Mon..Fri "
+      elif [[ "$pattern" == "5 6" ]]; then
+        out="Sat,Sun "
+      else
+        for id in "${ids[@]}"; do out+="${days_map[$id]},"; done
+        out="${out%,*} "
+      fi
+      echo "OnCalendar=${out}${t}:00"
+    done
+  } > "$file"
+}
+
+save_timer "$ON_OVERRIDE" "${S_VALS[@]}"
+save_timer "$OFF_OVERRIDE" "${E_VALS[@]}"
+systemctl --user daemon-reload
+
+cat <<EOF > "$CONFIG_FILE"
+# nightlight 0=don't enable, 1=enable
+NLT_ON=$([[ "$NLT" == "TRUE" ]] && echo 1 || echo 0)
+# autobrightness 0=don't enable, 1=enable
+BRT_ON=$([[ "$BRT" == "TRUE" ]] && echo 1 || echo 0)
+# dark mode 0=don't enable, 1=enable
+DRK_ON=$([[ "$DRK" == "TRUE" ]] && echo 1 || echo 0)
+# accent color to set (blue, green, orange, pink, purple, red, slate, teal, yellow) or 0=no change
+ACT_ON="$([[ "$ACT_T" == "TRUE" ]] && echo "$NEW_ACT" || echo "0")"
+# icon theme to set (e.g., "Adwaita-slate") or 0=no change
+ICN_ON="$([[ "$ICN_T" == "TRUE" ]] && echo "$NEW_ICN" || echo "0")"
+# feedback profile 0=don't change, 1=silent, 2=quiet
+FB_LEV=$FB_LEV
+EOF

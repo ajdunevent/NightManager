@@ -26,7 +26,6 @@
 
 ### To Do:
 * Have option to schedule changes separately and/or follow GNOME automatic Night Light time
-* Make a settings app and .desktop file for settings changes instead of editing text files
 
 
 ### Installation:
@@ -37,10 +36,12 @@ sudo apt install ./NightManager_latest.deb
 
 
 ### Configuration:
-* Edit `~/.config/nightynight/nightynight.conf` to set the desired nighttime mode behaviors.
-* Set nighttime enable time(s) using `OnCalendar` line(s) in `~/.config/systemd/user/nightynight-on.timer.d/10-override.conf`
-* Set nighttime disable time(s) using `OnCalendar` line(s) in `~/.config/systemd/user/nightynight-off.timer.d/10-override.conf`
-* Run: `systemctl --user daemon-reload && systemctl --user restart nightynight-on.timer nightynight-off.timer`
+* Launch the (beta) "NightManager Configuration" from your app launcher.
+* Or do things the old way:
+  * Edit `~/.config/nightmanager/nightmanager.conf` to set the desired nighttime mode behaviors.
+  * Set nighttime enable time(s) using `OnCalendar` line(s) in `~/.config/systemd/user/nightmanager-on.timer.d/10-override.conf`
+  * Set nighttime disable time(s) using `OnCalendar` line(s) in `~/.config/systemd/user/nightmanager-off.timer.d/10-override.conf`
+  * Run: `systemctl --user daemon-reload && systemctl --user restart nightmanager-on.timer nightmanager-off.timer`
 
 
 ### Uninstallation:

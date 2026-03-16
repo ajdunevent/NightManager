@@ -1,3 +1,3 @@
 #!/usr/bin/bash
 
-systemctl daemon-reload
+systemctl --machine=furios@.host --user daemon-reload

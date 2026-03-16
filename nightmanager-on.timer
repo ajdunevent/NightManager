@@ -4,7 +4,7 @@ Description=Scheduled night mode
 [Timer]
 OnCalendar=*-*-* 20:30:00
 Persistent=true
-Unit=nightynight@auto.service
+Unit=nightmanager@auto.service
 
 [Install]
 WantedBy=timers.target
