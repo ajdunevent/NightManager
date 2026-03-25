@@ -30,8 +30,8 @@
 
 ### Installation:
 ```bash
-wget -O NightManager_latest.deb https://github.com/ajdunevent/NightManager/releases/latest/download/NightManager_latest.deb
-sudo apt install ./NightManager_latest.deb
+wget -O nightmanager_latest.deb https://github.com/ajdunevent/NightManager/releases/latest/download/nightmanager_latest.deb
+sudo apt install ./nightmanager_latest.deb
 ```
 
 
