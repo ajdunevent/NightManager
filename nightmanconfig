@@ -1,8 +1,8 @@
 #!/bin/bash
 
-CONFIG_FILE="/home/furios/.config/nightmanager/nightmanager.conf"
-ON_OVERRIDE="/home/furios/.config/systemd/user/nightmanager-on.timer.d/10-override.conf"
-OFF_OVERRIDE="/home/furios/.config/systemd/user/nightmanager-off.timer.d/10-override.conf"
+CONFIG_FILE="$HOME/.config/nightmanager/nightmanager.conf"
+ON_OVERRIDE="$HOME/.config/systemd/user/nightmanager-on.timer.d/10-override.conf"
+OFF_OVERRIDE="$HOME/.config/systemd/user/nightmanager-off.timer.d/10-override.conf"
 
 get_day_time() {
   local file=$1; local target_day=$2; local default=$3
@@ -54,13 +54,18 @@ for i in {0..6}; do
   E_VALS[$i]=$(get_day_time "$OFF_OVERRIDE" "${SHORT[$i]}" "07:00")
 done
 
+LEG_LIST_RAW=$(python3 -c 'import os; from gi.repository import GLib; dirs = GLib.get_system_data_dirs() + [GLib.get_user_data_dir()]; theme_dirs = [os.path.join(p, "themes") for p in dirs] + [os.path.expanduser("~/.themes")]; themes = set(); [themes.add(d) for p in theme_dirs if os.path.exists(p) for d in os.listdir(p) if os.path.exists(os.path.join(p, d, "gtk-3.0"))]; print("!".join(sorted(themes)))' 2>/dev/null)
+ICN_LIST_RAW=$(python3 -c 'import os; from gi.repository import GLib; dirs = GLib.get_system_data_dirs() + [GLib.get_user_data_dir()]; themes = set(); [themes.add(d) for p in dirs for d in (os.listdir(os.path.join(p, "icons")) if os.path.exists(os.path.join(p, "icons")) else []) if os.path.exists(os.path.join(p, "icons", d, "index.theme"))]; print("!".join(sorted(themes)))' 2>/dev/null)
+
+
+LEG_TOGGLE="TRUE"; LEG_VAL="$LEG_ON"; [[ "$LEG_ON" == "0" || -z "$LEG_ON" ]] && LEG_TOGGLE="FALSE" && LEG_VAL="adw-gtk3-dark"
+LEG_LIST=$(echo "$LEG_LIST_RAW" | sed "s/\b$LEG_VAL\b/^$LEG_VAL/")
 ACT_TOGGLE="TRUE"; ACT_VAL="$ACT_ON"; [[ "$ACT_ON" == "0" || -z "$ACT_ON" ]] && ACT_TOGGLE="FALSE" && ACT_VAL="slate"
 ACT_LIST=$(echo "blue!green!orange!pink!purple!red!slate!teal!yellow" | sed "s/\b$ACT_VAL\b/^$ACT_VAL/")
 ICN_TOGGLE="TRUE"; ICN_VAL="$ICN_ON"; [[ "$ICN_ON" == "0" || -z "$ICN_ON" ]] && ICN_TOGGLE="FALSE" && ICN_VAL="Adwaita"
-ICN_LIST=$(python3 -c 'import os; from gi.repository import GLib; dirs = GLib.get_system_data_dirs() + [GLib.get_user_data_dir()]; themes = set(); [themes.add(d) for p in dirs for d in (os.listdir(os.path.join(p, "icons")) if os.path.exists(os.path.join(p, "icons")) else []) if os.path.exists(os.path.join(p, "icons", d, "index.theme"))]; print("!".join(sorted(themes)))' 2>/dev/null | sed "s/\b$ICN_VAL\b/^$ICN_VAL/")
-
+ICN_LIST=$(echo "$ICN_LIST_RAW" | sed "s/\b$ICN_VAL\b/^$ICN_VAL/")
 FBK_TOGGLE="TRUE"; [[ "$FB_LEV" == "0" || -z "$FB_LEV" ]] && FBK_TOGGLE="FALSE"
-FBK_LIST=$(echo "Silent!Quiet" | sed "s/\b$( [[ "$FB_LEV" == "1" ]] && echo "Silent" || echo "Quiet" )\b/^&/")
+[[ "$FB_LEV" == "1" ]] && FBK_LIST="^Silent!Quiet" || FBK_LIST="Silent!^Quiet"
 
 DISP_S=("${DOW[@]}")
 DISP_E=("${DOW[@]}")
@@ -73,6 +78,8 @@ while true; do
     --field="Enable Night Light:CHK" "$([[ "$NLT_ON" == "1" ]] && echo "TRUE" || echo "FALSE")" \
     --field="Enable Ambient Light Sensor:CHK" "$([[ "$BRT_ON" == "1" ]] && echo "TRUE" || echo "FALSE")" \
     --field="Enable Dark Theme Style:CHK" "$([[ "$DRK_ON" == "1" ]] && echo "TRUE" || echo "FALSE")" \
+    --field="Change GTK3 Theme:CHK" "$LEG_TOGGLE" \
+    --field="    GTK3 Theme:CB" "$LEG_LIST" \
     --field="Change Accent Color:CHK" "$ACT_TOGGLE" \
     --field="    Accent Color:CB" "$ACT_LIST" \
     --field="Change Icon Theme:CHK" "$ICN_TOGGLE" \
@@ -93,7 +100,7 @@ while true; do
 
   [[ $? -ne 0 ]] && exit 0
 
-  IFS="|" read -r _ NLT BRT DRK ACT_T NEW_ACT ICN_T NEW_ICN FBK_T NEW_FBK _ \
+  IFS="|" read -r _ NLT BRT DRK LEG_T LEG_NEW ACT_T ACT_NEW ICN_T ICN_NEW FBK_T FBK_NEW _ \
     SM_V ST_V SW_V STH_V SF_V SSA_V SSU_V _ \
     EM_V ET_V EW_V ETH_V EF_V ESA_V ESU_V <<< "$DATA"
 
@@ -115,13 +122,15 @@ while true; do
   NLT_ON=$([[ "$NLT" == "TRUE" ]] && echo 1 || echo 0)
   BRT_ON=$([[ "$BRT" == "TRUE" ]] && echo 1 || echo 0)
   DRK_ON=$([[ "$DRK" == "TRUE" ]] && echo 1 || echo 0)
-  ACT_TOGGLE="$ACT_T"; ACT_ON="$NEW_ACT"
-  ICN_TOGGLE="$ICN_T"; ICN_ON="$NEW_ICN"
-  FBK_TOGGLE="$FBK_T"; FB_LEV=$([[ "$NEW_FBK" == "Silent" ]] && echo 1 || echo 2)
+  LEG_TOGGLE="$LEG_T"; LEG_ON="$LEG_NEW"
+  ACT_TOGGLE="$ACT_T"; ACT_ON="$ACT_NEW"
+  ICN_TOGGLE="$ICN_T"; ICN_ON="$ICN_NEW"
+  FBK_TOGGLE="$FBK_T"; FB_LEV=$([[ "$FBK_NEW" == "Silent" ]] && echo 1 || echo 2)
 
-  ACT_LIST=$(echo "blue!green!orange!pink!purple!red!slate!teal!yellow" | sed "s/\b$NEW_ACT\b/^$NEW_ACT/")
-  ICN_LIST=$(python3 -c 'import os; from gi.repository import GLib; dirs = GLib.get_system_data_dirs() + [GLib.get_user_data_dir()]; themes = set(); [themes.add(d) for p in dirs for d in (os.listdir(os.path.join(p, "icons")) if os.path.exists(os.path.join(p, "icons")) else []) if os.path.exists(os.path.join(p, "icons", d, "index.theme"))]; print("!".join(sorted(themes)))' 2>/dev/null | sed "s/\b$NEW_ICN\b/^$NEW_ICN/")
-  FBK_LIST=$(echo "Silent!Quiet" | sed "s/\b$NEW_FBK\b/^$NEW_FBK/")
+  LEG_LIST=$(echo "$LEG_LIST_RAW" | sed "s/\b$LEG_NEW\b/^$LEG_NEW/")
+  ACT_LIST=$(echo "blue!green!orange!pink!purple!red!slate!teal!yellow" | sed "s/\b$ACT_NEW\b/^$ACT_NEW/")
+  ICN_LIST=$(echo "$ICN_LIST_RAW" | sed "s/\b$ICN_NEW\b/^$ICN_NEW/")
+  [[ "$FBK_NEW" == "Silent" ]] && FBK_LIST="^Silent!Quiet" || FBK_LIST="Silent!^Quiet"
 
   [[ $VALID -eq 1 ]] && break
 done
@@ -148,7 +157,7 @@ save_timer() {
         out="Sat,Sun "
       else
         for id in "${ids[@]}"; do out+="${days_map[$id]},"; done
-        out="${out%,*} "
+        out="${out%,} "
       fi
       echo "OnCalendar=${out}${t}:00"
     done
@@ -163,6 +172,7 @@ cat <<EOF > "$CONFIG_FILE"
 NLT_ON=$NLT_ON
 BRT_ON=$BRT_ON
 DRK_ON=$DRK_ON
+LEG_ON="$([[ "$LEG_TOGGLE" == "TRUE" ]] && echo "$LEG_ON" || echo "0")"
 ACT_ON="$([[ "$ACT_TOGGLE" == "TRUE" ]] && echo "$ACT_ON" || echo "0")"
 ICN_ON="$([[ "$ICN_TOGGLE" == "TRUE" ]] && echo "$ICN_ON" || echo "0")"
 FB_LEV=$([[ "$FBK_TOGGLE" == "TRUE" ]] && echo "$FB_LEV" || echo 0)
