@@ -1,9 +1,9 @@
-//! The Daytime Settings dialog: the settings night changes, with their day
-//! values. Through the daemon, a value night changed waits for the morning
-//! restore and anything else applies now. Without the daemon, values are
-//! written to the host directly so the dialog still works for recovery.
+//! Without the daemon, values are written to the host directly, for recovery
+//! when the daemon won't start.
 
+use std::cell::{Cell, RefCell};
 use std::rc::Rc;
+use std::time::Duration;
 
 use adw::prelude::*;
 use nightmanager::capabilities::Capabilities;
@@ -11,12 +11,27 @@ use nightmanager::keys::HostKey;
 use nightmanager::themes;
 
 use crate::client::Client;
+use crate::pictures;
 
-/// One setting as the dialog shows it.
 struct Day {
     key: HostKey,
     value: glib::Variant,
     at_morning: bool,
+}
+
+struct Row {
+    key: HostKey,
+    widget: adw::ActionRow,
+    update: Box<dyn Fn(&glib::Variant)>,
+}
+
+struct Dialog {
+    client: Option<Client>,
+    group: adw::PreferencesGroup,
+    rows: RefCell<Vec<Row>>,
+    /// Set while rows show outside changes, so their handlers don't write them back.
+    updating: Rc<Cell<bool>>,
+    refresh_queued: Cell<bool>,
 }
 
 pub fn show(parent: &adw::ApplicationWindow, client: Option<Client>) {
@@ -26,12 +41,11 @@ pub fn show(parent: &adw::ApplicationWindow, client: Option<Client>) {
             Some(c) => from_daemon(c).await,
             None => None,
         };
-        // A daemon that is missing or doesn't answer leaves the direct path.
         let (days, client) = match fetched {
             Some(days) => (days, client),
             None => (from_host().await, None),
         };
-        build(&days, client).present(Some(&parent));
+        build(days, client).present(Some(&parent));
     });
 }
 
@@ -74,65 +88,168 @@ fn host_settings(key: HostKey) -> Option<gio::Settings> {
         .then(|| gio::Settings::new(key.schema()))
 }
 
-fn build(days: &[Day], client: Option<Client>) -> adw::PreferencesDialog {
+fn build(days: Vec<Day>, client: Option<Client>) -> adw::PreferencesDialog {
     let dialog = adw::PreferencesDialog::builder().title("Daytime Settings").build();
     let page = adw::PreferencesPage::new();
-    let waiting = days.iter().any(|d| d.at_morning);
-    let group = adw::PreferencesGroup::builder()
-        .description(if client.is_none() {
-            "The background service isn't running. Changes apply now."
-        } else if waiting {
-            "Night mode is on. Settings it changed are restored with these values when it ends; the rest apply now."
-        } else {
-            "Changes apply now."
-        })
-        .build();
-    for day in days {
-        let row = row_for(day, client.clone());
-        if day.at_morning {
-            row.set_subtitle("Restored when night ends");
-        }
-        group.add(&row);
-    }
+    let group = adw::PreferencesGroup::new();
     page.add(&group);
     dialog.add(&page);
+
+    let d = Rc::new(Dialog {
+        client,
+        group,
+        rows: RefCell::default(),
+        updating: Rc::default(),
+        refresh_queued: Cell::new(false),
+    });
+    for day in &days {
+        let row = make_row(day, &d);
+        d.group.add(&row.widget);
+        d.rows.borrow_mut().push(row);
+    }
+    d.show_days(&days);
+    d.watch(&dialog);
     dialog
 }
 
-/// Sends a new day value to the daemon, or writes it directly without one.
-fn apply(client: &Option<Client>, key: HostKey, value: glib::Variant) {
-    match client {
-        Some(client) => {
-            let client = client.clone();
-            glib::spawn_future_local(async move {
-                let args = (key.name(), value).to_variant();
-                client.call_with("SetDaytime", Some(&args)).await;
-            });
+impl Dialog {
+    fn show_days(&self, days: &[Day]) {
+        self.updating.set(true);
+        for day in days {
+            if let Some(row) = self.rows.borrow().iter().find(|r| r.key == day.key) {
+                (row.update)(&day.value);
+                row.widget
+                    .set_subtitle(if day.at_morning { "Restored when night ends" } else { "" });
+            }
         }
-        None => {
-            if let Some(s) = host_settings(key) {
-                if let Err(err) = s.set_value(key.key(), &value) {
-                    tracing::warn!(?key, %err, "write failed");
+        self.updating.set(false);
+        self.group.set_description(Some(if self.client.is_none() {
+            "The background service isn't running. Changes apply now."
+        } else if days.iter().any(|d| d.at_morning) {
+            "Night mode is on. Settings it changed are restored with these values when it ends; the rest apply now."
+        } else {
+            "Changes apply now."
+        }));
+    }
+
+    fn queue_refresh(self: &Rc<Self>) {
+        if self.refresh_queued.replace(true) {
+            return;
+        }
+        let weak = Rc::downgrade(self);
+        glib::timeout_add_local_once(Duration::from_millis(150), move || {
+            let Some(d) = weak.upgrade() else { return };
+            d.refresh_queued.set(false);
+            glib::spawn_future_local(async move {
+                let days = match &d.client {
+                    Some(c) => from_daemon(c).await,
+                    None => Some(from_host().await),
+                };
+                if let Some(days) = days {
+                    d.show_days(&days);
+                }
+            });
+        });
+    }
+
+    fn watch(self: &Rc<Self>, dialog: &adw::PreferencesDialog) {
+        let mut watched: Vec<(gio::Settings, glib::SignalHandlerId)> = Vec::new();
+        let mut schemas: Vec<&str> = Vec::new();
+        for row in self.rows.borrow().iter() {
+            if schemas.contains(&row.key.schema()) {
+                continue;
+            }
+            schemas.push(row.key.schema());
+            if let Some(settings) = host_settings(row.key) {
+                let weak = Rc::downgrade(self);
+                let schema = row.key.schema();
+                let id = settings.connect_changed(None, move |_, key| {
+                    if HostKey::from_schema_key(schema, key).is_some() {
+                        if let Some(d) = weak.upgrade() {
+                            d.queue_refresh();
+                        }
+                    }
+                });
+                watched.push((settings, id));
+            }
+        }
+        let signal = self.client.as_ref().map(|c| {
+            let weak = Rc::downgrade(self);
+            c.connect_signal("DaytimeChanged", move || {
+                if let Some(d) = weak.upgrade() {
+                    d.queue_refresh();
+                }
+            })
+        });
+        let watched = RefCell::new(Some((watched, signal)));
+        let this = self.clone();
+        dialog.connect_closed(move |_| {
+            if let Some((settings, signal)) = watched.take() {
+                for (s, id) in settings {
+                    s.disconnect(id);
+                }
+                if let (Some(c), Some(id)) = (&this.client, signal) {
+                    c.disconnect(id);
+                }
+            }
+        });
+    }
+
+    fn apply(&self, key: HostKey, value: glib::Variant) {
+        if self.updating.get() {
+            return;
+        }
+        match &self.client {
+            Some(client) => {
+                let client = client.clone();
+                glib::spawn_future_local(async move {
+                    let args = (key.name(), value).to_variant();
+                    client.call_with("SetDaytime", Some(&args)).await;
+                });
+            }
+            None => {
+                if let Some(s) = host_settings(key) {
+                    if let Err(err) = s.set_value(key.key(), &value) {
+                        tracing::warn!(?key, %err, "write failed");
+                    }
                 }
             }
         }
     }
 }
 
-fn row_for(day: &Day, client: Option<Client>) -> adw::ActionRow {
+fn make_row(day: &Day, d: &Rc<Dialog>) -> Row {
     let key = day.key;
-    if let Some(on) = day.value.get::<bool>() {
+    let weak = Rc::downgrade(d);
+    let apply = move |value: glib::Variant| {
+        if let Some(d) = weak.upgrade() {
+            d.apply(key, value);
+        }
+    };
+
+    if day.value.get::<bool>().is_some() {
         let title = match key {
             HostKey::NightLight => "Night Light",
             _ => "Automatic Brightness",
         };
-        let row = adw::SwitchRow::builder().title(title).active(on).build();
-        row.connect_active_notify(move |row| apply(&client, key, row.is_active().to_variant()));
-        return row.upcast();
+        let row = adw::SwitchRow::builder().title(title).build();
+        row.connect_active_notify(move |row| apply(row.is_active().to_variant()));
+        let r = row.clone();
+        return Row {
+            key,
+            widget: row.upcast(),
+            update: Box::new(move |v| r.set_active(v.get::<bool>().unwrap_or(false))),
+        };
     }
 
-    let current = day.value.get::<String>().unwrap_or_default();
-    let (title, mut options): (&str, Vec<(String, String)>) = match key {
+    match key {
+        HostKey::Wallpaper | HostKey::WallpaperDark | HostKey::LockScreen => {
+            return picture_row(key, apply);
+        }
+        _ => {}
+    }
+
+    let (title, options): (&str, Vec<(String, String)>) = match key {
         HostKey::ColorScheme => (
             "Style",
             vec![
@@ -149,24 +266,77 @@ fn row_for(day: &Day, client: Option<Client>) -> adw::ActionRow {
             labeled(vec!["full".into(), "quiet".into(), "silent".into()], capitalize),
         ),
     };
-    if !options.iter().any(|(v, _)| *v == current) {
-        options.push((current.clone(), current.clone()));
-    }
-    let labels: Vec<&str> = options.iter().map(|(_, l)| l.as_str()).collect();
-    let row = adw::ComboRow::builder()
-        .title(title)
-        .model(&gtk::StringList::new(&labels))
-        .build();
-    if let Some(i) = options.iter().position(|(v, _)| *v == current) {
-        row.set_selected(i as u32);
-    }
-    let values: Rc<Vec<String>> = Rc::new(options.into_iter().map(|(v, _)| v).collect());
-    row.connect_selected_notify(move |row| {
-        if let Some(v) = values.get(row.selected() as usize) {
-            apply(&client, key, v.to_variant());
+    let list = gtk::StringList::new(&options.iter().map(|(_, l)| l.as_str()).collect::<Vec<_>>());
+    let values: Rc<RefCell<Vec<String>>> =
+        Rc::new(RefCell::new(options.into_iter().map(|(v, _)| v).collect()));
+    let row = adw::ComboRow::builder().title(title).model(&list).build();
+    row.connect_selected_notify({
+        let values = values.clone();
+        move |row| {
+            if let Some(v) = values.borrow().get(row.selected() as usize) {
+                apply(v.to_variant());
+            }
         }
     });
-    row.upcast()
+    let r = row.clone();
+    Row {
+        key,
+        widget: row.upcast(),
+        update: Box::new(move |v| {
+            let current = v.str().unwrap_or_default().to_string();
+            let index = values.borrow().iter().position(|x| *x == current);
+            let index = index.unwrap_or_else(|| {
+                // Themes installed after the dialog opened aren't in the list.
+                list.append(&current);
+                values.borrow_mut().push(current);
+                values.borrow().len() - 1
+            });
+            if r.selected() != index as u32 {
+                r.set_selected(index as u32);
+            }
+        }),
+    }
+}
+
+fn picture_row(key: HostKey, apply: impl Fn(glib::Variant) + Clone + 'static) -> Row {
+    let (title, role) = match key {
+        HostKey::Wallpaper => ("Wallpaper", "day-wallpaper"),
+        HostKey::WallpaperDark => ("Dark Style Wallpaper", "day-wallpaper-dark"),
+        _ => ("Lock Screen", "day-lock-screen"),
+    };
+    let row = adw::ActionRow::builder().title(title).build();
+    let thumb = pictures::Thumb::new();
+    let choose = gtk::Button::builder()
+        .label("Choose…")
+        .valign(gtk::Align::Center)
+        .build();
+    let clear = gtk::Button::builder()
+        .icon_name("edit-clear-symbolic")
+        .tooltip_text("No Picture")
+        .valign(gtk::Align::Center)
+        .css_classes(["flat"])
+        .build();
+    row.add_suffix(&thumb.none);
+    row.add_suffix(&thumb.frame);
+    row.add_suffix(&choose);
+    row.add_suffix(&clear);
+    choose.connect_clicked({
+        let apply = apply.clone();
+        move |button| {
+            let (apply, parent) = (apply.clone(), pictures::window_of(button));
+            glib::spawn_future_local(async move {
+                if let Some(uri) = pictures::choose(parent, role).await {
+                    apply(uri.to_variant());
+                }
+            });
+        }
+    });
+    clear.connect_clicked(move |_| apply("".to_variant()));
+    Row {
+        key,
+        widget: row,
+        update: Box::new(move |v| thumb.show(v.str().unwrap_or_default())),
+    }
 }
 
 fn labeled(items: Vec<String>, label: fn(&str) -> String) -> Vec<(String, String)> {

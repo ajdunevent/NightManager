@@ -60,6 +60,19 @@ impl Client {
             });
     }
 
+    pub fn connect_signal(&self, signal: &'static str, f: impl Fn() + 'static) -> glib::SignalHandlerId {
+        self.proxy.connect_local("g-signal", false, move |args| {
+            if args.get(2).and_then(|v| v.get::<String>().ok()).as_deref() == Some(signal) {
+                f();
+            }
+            None
+        })
+    }
+
+    pub fn disconnect(&self, id: glib::SignalHandlerId) {
+        self.proxy.disconnect(id);
+    }
+
     pub async fn call(&self, method: &str) -> Option<glib::Variant> {
         self.call_with(method, None).await
     }

@@ -4,6 +4,8 @@ pub const COLOR_SCHEMA: &str = "org.gnome.settings-daemon.plugins.color";
 pub const POWER_SCHEMA: &str = "org.gnome.settings-daemon.plugins.power";
 pub const INTERFACE_SCHEMA: &str = "org.gnome.desktop.interface";
 pub const FEEDBACKD_SCHEMA: &str = "org.sigxcpu.feedbackd";
+pub const BACKGROUND_SCHEMA: &str = "org.gnome.desktop.background";
+pub const SCREENSAVER_SCHEMA: &str = "org.gnome.desktop.screensaver";
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub enum HostKey {
@@ -14,10 +16,13 @@ pub enum HostKey {
     AccentColor,
     IconTheme,
     FeedbackProfile,
+    Wallpaper,
+    WallpaperDark,
+    LockScreen,
 }
 
 impl HostKey {
-    pub const ALL: [HostKey; 7] = [
+    pub const ALL: [HostKey; 10] = [
         HostKey::NightLight,
         HostKey::AmbientLight,
         HostKey::ColorScheme,
@@ -25,6 +30,9 @@ impl HostKey {
         HostKey::AccentColor,
         HostKey::IconTheme,
         HostKey::FeedbackProfile,
+        HostKey::Wallpaper,
+        HostKey::WallpaperDark,
+        HostKey::LockScreen,
     ];
 
     pub fn schema(self) -> &'static str {
@@ -35,6 +43,8 @@ impl HostKey {
                 INTERFACE_SCHEMA
             }
             HostKey::FeedbackProfile => FEEDBACKD_SCHEMA,
+            HostKey::Wallpaper | HostKey::WallpaperDark => BACKGROUND_SCHEMA,
+            HostKey::LockScreen => SCREENSAVER_SCHEMA,
         }
     }
 
@@ -47,6 +57,9 @@ impl HostKey {
             HostKey::AccentColor => "accent-color",
             HostKey::IconTheme => "icon-theme",
             HostKey::FeedbackProfile => "profile",
+            HostKey::Wallpaper => "picture-uri",
+            HostKey::WallpaperDark => "picture-uri-dark",
+            HostKey::LockScreen => "picture-uri",
         }
     }
 
@@ -62,10 +75,20 @@ impl HostKey {
         matches!(self, HostKey::GtkTheme | HostKey::AccentColor | HostKey::IconTheme)
     }
 
-    /// The key's name on the daemon's D-Bus interface. GSettings key names are
-    /// unique across the managed keys, so they double as names.
+    /// GSettings key names repeat across schemas (`picture-uri`).
     pub fn name(self) -> &'static str {
-        self.key()
+        match self {
+            HostKey::NightLight => "night-light",
+            HostKey::AmbientLight => "ambient-light",
+            HostKey::ColorScheme => "color-scheme",
+            HostKey::GtkTheme => "gtk-theme",
+            HostKey::AccentColor => "accent-color",
+            HostKey::IconTheme => "icon-theme",
+            HostKey::FeedbackProfile => "feedback",
+            HostKey::Wallpaper => "wallpaper",
+            HostKey::WallpaperDark => "wallpaper-dark",
+            HostKey::LockScreen => "lock-screen",
+        }
     }
 
     pub fn from_name(name: &str) -> Option<HostKey> {
@@ -110,6 +133,17 @@ mod tests {
         );
         assert_eq!(parse_value(HostKey::NightLight, "false"), Some(false.to_variant()));
         assert_eq!(parse_value(HostKey::NightLight, "'x'"), None);
+    }
+
+    #[test]
+    fn names_are_unique() {
+        let mut names: Vec<&str> = HostKey::ALL.iter().map(|k| k.name()).collect();
+        names.sort_unstable();
+        names.dedup();
+        assert_eq!(names.len(), HostKey::ALL.len());
+        for key in HostKey::ALL {
+            assert_eq!(HostKey::from_name(key.name()), Some(key));
+        }
     }
 
     #[test]

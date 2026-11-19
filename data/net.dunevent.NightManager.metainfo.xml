@@ -36,6 +36,17 @@
     <control>touch</control>
   </supports>
   <releases>
+    <release version="0.1.2" date="2026-11-18">
+      <description>
+        <p>Night mode can now change the wallpaper and the lock screen picture.</p>
+        <ul>
+          <li>The night wallpaper and lock screen can each be a picture or none</li>
+          <li>Daytime Settings can set the day wallpapers and lock screen picture too</li>
+          <li>Daytime Settings follows changes made elsewhere while it is open</li>
+          <li>The switch on the app icon is back to its full size</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.1.1" date="2026-11-18">
       <description>
         <p>Night mode no longer overwrites your daytime settings.</p>

@@ -1,5 +1,6 @@
 mod client;
 mod daytime;
+mod pictures;
 mod time_row;
 mod window;
 

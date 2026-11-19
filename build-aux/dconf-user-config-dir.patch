@@ -1,14 +1,14 @@
 diff --git a/engine/dconf-engine-source-user.c b/engine/dconf-engine-source-user.c
-index 1657875..f73ac57 100644
+index 1657875..25b3ba5 100644
 --- a/engine/dconf-engine-source-user.c
 +++ b/engine/dconf-engine-source-user.c
 @@ -34,16 +34,37 @@ typedef struct
    guint8 *shm;
  } DConfEngineSourceUser;
  
-+/* The directory holding the user databases. Inside a Flatpak sandbox
-+ * $XDG_CONFIG_HOME is private to the app, so DCONF_USER_CONFIG_DIR can name
-+ * the host's directory instead: absolute, or relative to the home directory.
++/* In a Flatpak sandbox $XDG_CONFIG_HOME is private to the app.
++ * DCONF_USER_CONFIG_DIR names the host's directory, absolute or relative to
++ * the home directory.
 + */
 +static gchar *
 +dconf_engine_source_user_get_dir (void)

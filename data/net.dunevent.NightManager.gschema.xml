@@ -34,6 +34,32 @@
       <default>'silent'</default>
       <summary>Feedback profile at night, empty for no change</summary>
     </key>
+    <key name="wallpaper" type="s">
+      <choices>
+        <choice value=""/>
+        <choice value="image"/>
+        <choice value="blank"/>
+      </choices>
+      <default>''</default>
+      <summary>Wallpaper at night: a picture, none, or empty for no change</summary>
+    </key>
+    <key name="wallpaper-image" type="s">
+      <default>''</default>
+      <summary>URI of the night wallpaper picture</summary>
+    </key>
+    <key name="lock-screen" type="s">
+      <choices>
+        <choice value=""/>
+        <choice value="image"/>
+        <choice value="blank"/>
+      </choices>
+      <default>''</default>
+      <summary>Lock screen at night: a picture, none, or empty for no change</summary>
+    </key>
+    <key name="lock-screen-image" type="s">
+      <default>''</default>
+      <summary>URI of the night lock screen picture</summary>
+    </key>
     <key name="save-theme-changes" type="b">
       <default>false</default>
       <summary>Keep theme, icon and accent changes made at night as the night values</summary>

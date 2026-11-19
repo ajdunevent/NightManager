@@ -30,6 +30,7 @@ const INTROSPECTION: &str = r#"
     <method name="GetDaytime">
       <arg name="values" type="a(svb)" direction="out"/>
     </method>
+    <signal name="DaytimeChanged"/>
     <method name="SetDaytime">
       <arg name="key" type="s" direction="in"/>
       <arg name="value" type="v" direction="in"/>
@@ -67,10 +68,9 @@ pub struct Daemon {
     reload_queued: Cell<bool>,
 }
 
-/// Writes a fresh value and reads it back. In the sandbox, writes reach the
-/// host's dconf even when reads can't see its database; every read then
-/// returns the schema default, and the day values saved at night start would
-/// overwrite the user's settings in the morning.
+/// Without the dconf patch, sandboxed writes reached the host while every read
+/// returned the schema default, and saved day values overwrote the user's
+/// settings in the morning.
 fn check_settings_round_trip(settings: &gio::Settings) -> anyhow::Result<()> {
     let token = format!("{}-{}", std::process::id(), glib::real_time());
     settings.set_string("settings-probe", &token)?;
@@ -164,9 +164,16 @@ impl Daemon {
         Ok(daemon)
     }
 
+    /// Also emits `DaytimeChanged`, since the saved day values live in the state.
     fn save_state(&self) {
         if let Err(err) = self.state.borrow().save(&self.state_path) {
             tracing::warn!(%err, "saving state failed");
+        }
+        if let Err(err) =
+            self.conn
+                .emit_signal(None, DAEMON_OBJECT_PATH, DAEMON_INTERFACE, "DaytimeChanged", None)
+        {
+            tracing::debug!(%err, "DaytimeChanged not sent");
         }
     }
 
@@ -310,9 +317,7 @@ impl Daemon {
         self.emit_properties();
     }
 
-    /// The day value of each key this device has: the one saved for the morning
-    /// restore when night changed it, otherwise the current value. The flag
-    /// marks values that only take effect when night ends.
+    /// The flag marks saved values that apply when night ends.
     fn daytime_values(&self) -> Vec<(String, glib::Variant, bool)> {
         let caps = Capabilities::detect(&self.conn);
         let state = self.state.borrow();
@@ -333,9 +338,8 @@ impl Daemon {
             .collect()
     }
 
-    /// Sets a day value. At night, a key night changed gets a new saved value
-    /// for the morning; any other key is written now. Returns whether the
-    /// value waits for the morning, or `None` for a value of the wrong type.
+    /// Returns whether the value waits for the morning, or `None` for an
+    /// unsupported key or a wrong value type.
     fn set_daytime(self: &Rc<Self>, key: HostKey, value: glib::Variant) -> Option<bool> {
         if value.type_() != key.variant_type() || !self.host.supports(key) {
             return None;
@@ -678,8 +682,7 @@ impl Daemon {
                     "Quit" => {
                         tracing::info!("quitting on request");
                         invocation.return_value(None);
-                        // The reply goes out before the process ends. State is
-                        // already saved, so the next start picks up from here.
+                        // Flushed first so the caller gets its reply.
                         let conn = d.conn.clone();
                         glib::spawn_future_local(async move {
                             let _ = conn.flush_future().await;

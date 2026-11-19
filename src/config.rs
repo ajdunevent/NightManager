@@ -8,6 +8,22 @@ pub const DAEMON_BUS_NAME: &str = "net.dunevent.NightManager.Daemon";
 pub const DAEMON_OBJECT_PATH: &str = "/net/dunevent/NightManager/Daemon";
 pub const DAEMON_INTERFACE: &str = "net.dunevent.NightManager.Daemon";
 
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum Picture {
+    /// A `file://` URI.
+    Image(String),
+    Blank,
+}
+
+impl Picture {
+    fn uri(&self) -> &str {
+        match self {
+            Picture::Image(uri) => uri,
+            Picture::Blank => "",
+        }
+    }
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum FeedbackProfile {
     Full,
@@ -119,6 +135,8 @@ pub struct Config {
     pub accent_color: Option<String>,
     pub icon_theme: Option<String>,
     pub feedback_level: Option<FeedbackProfile>,
+    pub wallpaper: Option<Picture>,
+    pub lock_screen: Option<Picture>,
     pub save_theme_changes: bool,
     pub schedule_source: ScheduleSource,
     /// Monday first. `None` is a day without that boundary.
@@ -155,6 +173,14 @@ impl Config {
         if let Some(f) = self.feedback_level {
             out.push((HostKey::FeedbackProfile, f.as_str().to_variant()));
         }
+        // Phosh shows picture-uri-dark while Dark Style is on.
+        if let Some(w) = &self.wallpaper {
+            out.push((HostKey::Wallpaper, w.uri().to_variant()));
+            out.push((HostKey::WallpaperDark, w.uri().to_variant()));
+        }
+        if let Some(l) = &self.lock_screen {
+            out.push((HostKey::LockScreen, l.uri().to_variant()));
+        }
         out
     }
 
@@ -171,6 +197,8 @@ impl Config {
             accent_color: opt("accent-color"),
             icon_theme: opt("icon-theme"),
             feedback_level: FeedbackProfile::parse(&settings.string("feedback-level")),
+            wallpaper: picture(settings, "wallpaper", "wallpaper-image"),
+            lock_screen: picture(settings, "lock-screen", "lock-screen-image"),
             save_theme_changes: settings.boolean("save-theme-changes"),
             schedule_source: match settings.string("schedule-source").as_str() {
                 "night-light" => ScheduleSource::NightLight,
@@ -188,6 +216,18 @@ impl Config {
                 _ => ScreenOffMode::WakeBriefly,
             },
         }
+    }
+}
+
+/// Picture mode without a picture yet is no change.
+fn picture(settings: &gio::Settings, mode_key: &str, image_key: &str) -> Option<Picture> {
+    match settings.string(mode_key).as_str() {
+        "image" => {
+            let uri = settings.string(image_key);
+            (!uri.is_empty()).then(|| Picture::Image(uri.into()))
+        }
+        "blank" => Some(Picture::Blank),
+        _ => None,
     }
 }
 

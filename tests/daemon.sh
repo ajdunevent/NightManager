@@ -258,7 +258,11 @@ new_env; start_daemon
 check "day: applied now" "(false,)" "$(daytime icon-theme "<'DayIcons'>")"
 check "day: host changed" "'DayIcons'" "$(get org.gnome.desktop.interface icon-theme)"
 call StartNight
+gdbus monitor --session "${DEST[@]:0:2}" >"$WORK/monitor.log" 2>&1 & MON=$!
+sleep 0.3
 check "night: managed key waits" "(true,)" "$(daytime color-scheme "<'prefer-light'>")"
+kill "$MON" 2>/dev/null; wait "$MON" 2>/dev/null
+check "saved day value announced" "yes" "$(grep -q DaytimeChanged "$WORK/monitor.log" && echo yes || echo no)"
 check "night: host keeps night value" "'prefer-dark'" "$(get org.gnome.desktop.interface color-scheme)"
 check "night: saved value listed" "yes" "$(gdbus call --session "${DEST[@]}" --method "$IFACE.GetDaytime" \
   | grep -qF "('color-scheme', <'prefer-light'>, true)" && echo yes || echo no)"
@@ -269,6 +273,37 @@ check "wrong type refused" "yes" "$(daytime color-scheme "<true>" | grep -q Inva
 call EndNight
 check "morning uses the new day value" "'prefer-light'" "$(get org.gnome.desktop.interface color-scheme)"
 check "unmanaged key kept" "'OtherTheme'" "$(get org.gnome.desktop.interface gtk-theme)"
+stop_daemon
+
+echo "-- wallpaper and lock screen"
+BG=org.gnome.desktop.background
+new_env
+host $BG picture-uri "'file:///day.png'"
+host $BG picture-uri-dark "'file:///day-dark.png'"
+host $BG primary-color "'#123456'"
+host org.gnome.desktop.screensaver picture-uri "'file:///day-lock.png'"
+app wallpaper "'image'"; app wallpaper-image "'file:///night.png'"; app lock-screen "'blank'"
+start_daemon
+call StartNight
+check "night picture" "'file:///night.png'" "$(get $BG picture-uri)"
+check "night picture in dark style too" "'file:///night.png'" "$(get $BG picture-uri-dark)"
+check "color left alone for a picture" "'#123456'" "$(get $BG primary-color)"
+check "lock screen picture cleared" "''" "$(get org.gnome.desktop.screensaver picture-uri)"
+call EndNight
+check "day picture restored" "'file:///day.png'" "$(get $BG picture-uri)"
+check "day dark picture restored" "'file:///day-dark.png'" "$(get $BG picture-uri-dark)"
+check "day lock screen restored" "'file:///day-lock.png'" "$(get org.gnome.desktop.screensaver picture-uri)"
+app wallpaper "'blank'"; sleep 0.4
+call StartNight
+check "no picture" "''" "$(get $BG picture-uri)"
+check "no dark picture" "''" "$(get $BG picture-uri-dark)"
+check "color untouched" "'#123456'" "$(get $BG primary-color)"
+call EndNight
+check "day picture back after no picture" "'file:///day.png'" "$(get $BG picture-uri)"
+app wallpaper "'image'"; app wallpaper-image "''"; sleep 0.4
+call StartNight
+check "picture mode without a picture changes nothing" "'file:///day.png'" "$(get $BG picture-uri)"
+call EndNight
 stop_daemon
 
 echo "-- quit"

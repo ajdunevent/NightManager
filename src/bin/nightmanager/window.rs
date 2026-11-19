@@ -54,8 +54,6 @@ impl Ui {
         }
     }
 
-    /// The daemon also watches its settings; whether dconf change notifications
-    /// reach the sandbox is unverified.
     fn queue_reload(self: &Rc<Self>) {
         if let Some(id) = self.reload_source.borrow_mut().take() {
             id.remove();
@@ -243,8 +241,7 @@ fn add_actions(app: &adw::Application, window: &adw::ApplicationWindow, ui: &Rc<
     });
     app.add_action(&about);
 
-    // Quit stops the background service too, since that is what keeps
-    // NightManager running. Opening the app or logging in starts it again.
+    // Quit also stops the daemon; opening the app or logging in starts it.
     let quit = gio::SimpleAction::new("quit", None);
     quit.connect_activate({
         let app = app.clone();
@@ -264,8 +261,6 @@ fn add_actions(app: &adw::Application, window: &adw::ApplicationWindow, ui: &Rc<
     app.set_accels_for_action("app.quit", &["<Control>q"]);
 }
 
-/// The standard GNOME About window, built from `AdwAboutWindow` for the
-/// platform layout and its "Troubleshooting" section.
 fn show_about(parent: &adw::ApplicationWindow) {
     let about = adw::AboutWindow::builder()
         .transient_for(parent)
@@ -389,6 +384,10 @@ fn night_group(ui: &Rc<Ui>) -> adw::PreferencesGroup {
             ("silent".into(), "Silent".into()),
         ],
     );
+    let (wallpaper, wallpaper_picture) =
+        picture_rows(s, "wallpaper", "Wallpaper", "wallpaper-image", "night-wallpaper");
+    let (lock, lock_picture) =
+        picture_rows(s, "lock-screen", "Lock Screen", "lock-screen-image", "night-lock-screen");
     let keep = switch_row(
         s,
         "save-theme-changes",
@@ -405,6 +404,10 @@ fn night_group(ui: &Rc<Ui>) -> adw::PreferencesGroup {
         gtk3.upcast_ref(),
         icons.upcast_ref(),
         feedback.upcast_ref(),
+        wallpaper.upcast_ref(),
+        wallpaper_picture.upcast_ref(),
+        lock.upcast_ref(),
+        lock_picture.upcast_ref(),
         keep.upcast_ref(),
     ] {
         group.add(row);
@@ -417,6 +420,60 @@ fn night_group(ui: &Rc<Ui>) -> adw::PreferencesGroup {
         feedback.set_visible(caps.feedback);
     });
     group
+}
+
+fn picture_row(settings: &gio::Settings, uri_key: &'static str, role: &'static str) -> adw::ActionRow {
+    let row = adw::ActionRow::builder().title("Picture").build();
+    let thumb = crate::pictures::Thumb::new();
+    let button = gtk::Button::builder()
+        .label("Choose…")
+        .valign(gtk::Align::Center)
+        .build();
+    row.add_suffix(&thumb.none);
+    row.add_suffix(&thumb.frame);
+    row.add_suffix(&button);
+    thumb.show(&settings.string(uri_key));
+    settings.connect_changed(Some(uri_key), move |s, k| thumb.show(&s.string(k)));
+    button.connect_clicked({
+        let settings = settings.clone();
+        move |button| {
+            let (settings, parent) = (settings.clone(), crate::pictures::window_of(button));
+            glib::spawn_future_local(async move {
+                if let Some(uri) = crate::pictures::choose(parent, role).await {
+                    let _ = settings.set_string(uri_key, &uri);
+                }
+            });
+        }
+    });
+    row
+}
+
+fn show_for_mode(settings: &gio::Settings, mode_key: &'static str, mode: &'static str, row: &impl IsA<gtk::Widget>) {
+    let row = row.clone().upcast::<gtk::Widget>();
+    row.set_visible(settings.string(mode_key) == mode);
+    settings.connect_changed(Some(mode_key), move |s, k| row.set_visible(s.string(k) == mode));
+}
+
+fn picture_rows(
+    s: &gio::Settings,
+    mode_key: &'static str,
+    title: &str,
+    image_key: &'static str,
+    role: &'static str,
+) -> (adw::ComboRow, adw::ActionRow) {
+    let mode = choice_row(
+        s,
+        mode_key,
+        title,
+        vec![
+            (String::new(), "No Change".into()),
+            ("image".into(), "Picture".into()),
+            ("blank".into(), "No Picture".into()),
+        ],
+    );
+    let picture = picture_row(s, image_key, role);
+    show_for_mode(s, mode_key, "image", &picture);
+    (mode, picture)
 }
 
 fn read_times(settings: &gio::Settings, key: &str) -> [Option<NaiveTime>; 7] {

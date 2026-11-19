@@ -13,9 +13,13 @@ settings back. Built for the FuriLabs FLX1s with Phosh, and usable on GNOME.
 * Legacy (GTK3) theme, such as [adw-gtk3](https://github.com/lassekongo83/adw-gtk3)
 * Icon theme, such as [Adwaita-colors](https://github.com/dpejoh/Adwaita-colors)
 * Feedback profile: Quiet or Silent
+* Wallpaper: a picture, or none
+* Lock screen picture, or none
 
 Each one is optional. The values in effect when night mode starts are saved and
-put back when it ends. With **Keep Theme Changes Made at Night** on, an accent,
+put back when it ends. A night wallpaper is set for both the default and the
+dark style, so it shows whichever style is on. Chosen pictures are copied into
+the app's data folder, where Phosh can read them. With **Keep Theme Changes Made at Night** on, an accent,
 theme or icon change you make at night becomes the night value.
 
 Rows for features the device lacks (no feedbackd, no Night Light) are hidden.

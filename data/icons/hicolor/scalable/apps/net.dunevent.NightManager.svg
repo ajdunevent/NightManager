@@ -207,7 +207,7 @@
     <circle cx="513" cy="313" r="311" fill="url(#limb)"/>
   </g>
   <!-- Recessed switch, libadwaita proportions -->
-  <g transform="translate(512 512) scale(0.85) translate(-512 -512)">
+  <g transform="translate(512 512) scale(1.0) translate(-512 -512)">
   <rect x="272" y="382" width="480" height="260" rx="130" fill="url(#pit)"/>
   <rect x="272" y="382" width="480" height="260" rx="130" fill="none" stroke="#ffffff" stroke-opacity="0.55" stroke-width="6" clip-path="url(#lowerhalf)"/>
   <rect x="290" y="400" width="444" height="224" rx="112" fill="#3584e4"/>
