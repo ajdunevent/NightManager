@@ -42,11 +42,21 @@
     </linearGradient>
     <path id="body" d="M0 708 271 622H431L516 678 600 622H759L1024 708V862A160 160 0 0 1 864 1024H162A160 160 0 0 1 0 862Z"/>
     <clipPath id="bodyclip"><use href="#body"/></clipPath>
+    <linearGradient id="pit" x1="0" y1="382" x2="0" y2="642" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#5e5c64"/>
+      <stop offset="1" stop-color="#9a9996"/>
+    </linearGradient>
+    <linearGradient id="trackshade" x1="0" y1="400" x2="0" y2="624" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#000000" stop-opacity="0.3"/>
+      <stop offset="0.35" stop-color="#000000" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="knobfill" x1="0" y1="414" x2="0" y2="610" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset="1" stop-color="#deddda"/>
+    </linearGradient>
+    <clipPath id="lowerhalf"><rect x="0" y="512" width="1024" height="544"/></clipPath>
   </defs>
-  <g transform="translate(64 34) scale(0.875)">
-    <use href="#body" fill="#9e8e7c" transform="translate(0 52)"/>
-    <use href="#body" fill="url(#suit)"/>
-    <use href="#body" fill="url(#suitsides)"/>
+  <g transform="translate(-226.98 61.12) scale(1.44051)">
     <circle cx="513" cy="313" r="311" fill="url(#moon)"/>
     <g clip-path="url(#moonclip)">
      <g transform="rotate(-25 513 313)">
@@ -195,15 +205,14 @@
      </g>
     </g>
     <circle cx="513" cy="313" r="311" fill="url(#limb)"/>
-    <g fill="url(#collar)">
-      <path d="M322 550 270 624 412 792 516 678Z"/>
-      <path d="M708 550 760 624 618 792 514 678Z"/>
-    </g>
-    <g fill="#d3c8bc">
-      <circle cx="413" cy="750" r="10"/>
-      <circle cx="620" cy="750" r="10"/>
-    </g>
-    <path fill="url(#knot)" d="M515 674 578 748 554 801H478L454 748Z"/>
-    <path fill="url(#tie)" clip-path="url(#bodyclip)" d="M478 801H554L586 1024H446Z"/>
+  </g>
+  <!-- Recessed switch, libadwaita proportions -->
+  <g transform="translate(512 512) scale(0.85) translate(-512 -512)">
+  <rect x="272" y="382" width="480" height="260" rx="130" fill="url(#pit)"/>
+  <rect x="272" y="382" width="480" height="260" rx="130" fill="none" stroke="#ffffff" stroke-opacity="0.55" stroke-width="6" clip-path="url(#lowerhalf)"/>
+  <rect x="290" y="400" width="444" height="224" rx="112" fill="#3584e4"/>
+  <rect x="290" y="400" width="444" height="224" rx="112" fill="url(#trackshade)"/>
+  <circle cx="622" cy="518" r="98" fill="#000000" fill-opacity="0.18"/>
+  <circle cx="622" cy="512" r="98" fill="url(#knobfill)"/>
   </g>
 </svg>
