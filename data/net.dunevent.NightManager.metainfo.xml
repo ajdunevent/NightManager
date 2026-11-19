@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>net.dunevent.NightManager</id>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>GPL-3.0-or-later</project_license>
+  <name>NightManager</name>
+  <summary>Switch to night mode on a schedule</summary>
+  <developer id="net.dunevent">
+    <name>NightManager contributors</name>
+  </developer>
+  <url type="homepage">https://dev.dunevent.net/aj/NightManager</url>
+  <url type="vcs-browser">https://dev.dunevent.net/aj/NightManager</url>
+  <url type="bugtracker">https://dev.dunevent.net/aj/NightManager/issues</url>
+  <update_contact>aj@dunevent.net</update_contact>
+  <description>
+    <p>
+      NightManager keeps a phone from disturbing your sleep. At the evening time
+      it switches to the night settings you choose, and in the morning it puts
+      your day settings back.
+    </p>
+    <ul>
+      <li>Night Light, automatic brightness, dark style, accent color, GTK3 theme and icon theme</li>
+      <li>Quiet or Silent feedback</li>
+      <li>Per-day start and end times, or Night Light's own schedule</li>
+      <li>Start or end night mode early from the quick settings</li>
+    </ul>
+  </description>
+  <launchable type="desktop-id">net.dunevent.NightManager.desktop</launchable>
+  <content_rating type="oars-1.1"/>
+  <requires>
+    <display_length compare="ge">360</display_length>
+  </requires>
+  <supports>
+    <control>pointing</control>
+    <control>keyboard</control>
+    <control>touch</control>
+  </supports>
+  <releases>
+    <release version="0.1.0" date="2026-11-17">
+      <description>
+        <p>First Flatpak release, replacing the script-based version.</p>
+      </description>
+    </release>
+  </releases>
+</component>

@@ -1,0 +1,43 @@
+diff --git a/engine/dconf-engine-source-user.c b/engine/dconf-engine-source-user.c
+index 1657875..f73ac57 100644
+--- a/engine/dconf-engine-source-user.c
++++ b/engine/dconf-engine-source-user.c
+@@ -34,16 +34,37 @@ typedef struct
+   guint8 *shm;
+ } DConfEngineSourceUser;
+ 
++/* The directory holding the user databases. Inside a Flatpak sandbox
++ * $XDG_CONFIG_HOME is private to the app, so DCONF_USER_CONFIG_DIR can name
++ * the host's directory instead: absolute, or relative to the home directory.
++ */
++static gchar *
++dconf_engine_source_user_get_dir (void)
++{
++  const gchar *dir = g_getenv ("DCONF_USER_CONFIG_DIR");
++
++  if (dir == NULL || dir[0] == '\0')
++    return g_build_filename (g_get_user_config_dir (), "dconf", NULL);
++
++  if (g_path_is_absolute (dir))
++    return g_strdup (dir);
++
++  return g_build_filename (g_get_home_dir (), dir, NULL);
++}
++
+ static GvdbTable *
+ dconf_engine_source_user_open_gvdb (const gchar *name)
+ {
+   GvdbTable *table;
++  gchar *dir;
+   gchar *filename;
+ 
+   /* This can fail in the normal case of the user not having any
+    * settings.  That's OK and it shouldn't be considered as an error.
+    */
+-  filename = g_build_filename (g_get_user_config_dir (), "dconf", name, NULL);
++  dir = dconf_engine_source_user_get_dir ();
++  filename = g_build_filename (dir, name, NULL);
++  g_free (dir);
+   table = gvdb_table_new (filename, FALSE, NULL);
+   g_free (filename);
+ 

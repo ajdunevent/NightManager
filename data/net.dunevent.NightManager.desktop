@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=NightManager
+Comment=Switch to night mode on a schedule
+Exec=nightmanager
+Icon=net.dunevent.NightManager
+Terminal=false
+Categories=Settings;DesktopSettings;GTK;
+Keywords=night;light;dark;theme;schedule;quiet;silent;
+StartupNotify=true
+X-Purism-FormFactor=Workstation;Mobile;

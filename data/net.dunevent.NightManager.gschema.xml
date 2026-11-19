@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<schemalist>
+  <schema id="net.dunevent.NightManager" path="/net/dunevent/NightManager/">
+    <key name="night-light" type="b">
+      <default>true</default>
+      <summary>Turn on Night Light at night</summary>
+    </key>
+    <key name="ambient-light" type="b">
+      <default>true</default>
+      <summary>Turn on automatic brightness at night</summary>
+    </key>
+    <key name="dark-style" type="b">
+      <default>true</default>
+      <summary>Use the dark style at night</summary>
+    </key>
+    <key name="gtk-theme" type="s">
+      <default>''</default>
+      <summary>GTK3 theme at night, empty for no change</summary>
+    </key>
+    <key name="accent-color" type="s">
+      <default>'slate'</default>
+      <summary>Accent color at night, empty for no change</summary>
+    </key>
+    <key name="icon-theme" type="s">
+      <default>''</default>
+      <summary>Icon theme at night, empty for no change</summary>
+    </key>
+    <key name="feedback-level" type="s">
+      <choices>
+        <choice value=""/>
+        <choice value="quiet"/>
+        <choice value="silent"/>
+      </choices>
+      <default>'silent'</default>
+      <summary>Feedback profile at night, empty for no change</summary>
+    </key>
+    <key name="save-theme-changes" type="b">
+      <default>false</default>
+      <summary>Keep theme, icon and accent changes made at night as the night values</summary>
+    </key>
+    <key name="schedule-source" type="s">
+      <choices>
+        <choice value="custom"/>
+        <choice value="night-light"/>
+      </choices>
+      <default>'custom'</default>
+      <summary>Where start and end times come from</summary>
+    </key>
+    <key name="evening-times" type="as">
+      <default>['20:30', '20:30', '20:30', '20:30', '20:30', '20:30', '20:30']</default>
+      <summary>Start time per weekday, Monday first; empty for none</summary>
+    </key>
+    <key name="morning-times" type="as">
+      <default>['07:00', '07:00', '07:00', '07:00', '07:00', '09:00', '09:00']</default>
+      <summary>End time per weekday, Monday first; empty for none</summary>
+    </key>
+    <key name="evening-same" type="b">
+      <default>true</default>
+      <summary>Show one start time for every day</summary>
+    </key>
+    <key name="morning-same" type="b">
+      <default>false</default>
+      <summary>Show one end time for every day</summary>
+    </key>
+    <key name="trigger-dark-style" type="b">
+      <default>false</default>
+      <summary>Dark Style starts and ends night mode</summary>
+    </key>
+    <key name="trigger-night-light" type="b">
+      <default>false</default>
+      <summary>Night Light starts and ends night mode</summary>
+    </key>
+    <key name="trigger-feedback" type="as">
+      <default>[]</default>
+      <summary>Feedback profiles that start night mode; empty for no trigger</summary>
+    </key>
+    <key name="screen-off-mode" type="s">
+      <choices>
+        <choice value="wake"/>
+        <choice value="wait"/>
+      </choices>
+      <default>'wake'</default>
+      <summary>How Night Light changes are made while the screen is off</summary>
+    </key>
+    <key name="autostart-requested" type="b">
+      <default>false</default>
+      <summary>Whether starting at login has been requested from the portal</summary>
+    </key>
+    <key name="settings-probe" type="s">
+      <default>''</default>
+      <summary>Written and read back at startup to check that settings reach the host</summary>
+    </key>
+  </schema>
+</schemalist>

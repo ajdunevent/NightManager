@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Subset of feedbackd's schema; same id and path. The profile is an enum there;
+     dconf stores the same string either way. -->
+<schemalist>
+  <schema id="org.sigxcpu.feedbackd" path="/org/sigxcpu/feedbackd/">
+    <key name="profile" type="s">
+      <choices>
+        <choice value="full"/>
+        <choice value="quiet"/>
+        <choice value="silent"/>
+      </choices>
+      <default>'full'</default>
+    </key>
+  </schema>
+</schemalist>

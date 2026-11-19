@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Subset of gnome-settings-daemon's schema; same id and path. -->
+<schemalist>
+  <schema id="org.gnome.settings-daemon.plugins.power" path="/org/gnome/settings-daemon/plugins/power/">
+    <key name="ambient-enabled" type="b">
+      <default>true</default>
+    </key>
+  </schema>
+</schemalist>

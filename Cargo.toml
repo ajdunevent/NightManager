@@ -1,0 +1,43 @@
+[package]
+name = "nightmanager"
+version = "0.1.0"
+edition = "2021"
+authors = ["AJ Dunevent"]
+license = "GPL-3.0-or-later"
+description = "Night mode scheduler for Phosh and GNOME"
+
+[lib]
+name = "nightmanager"
+path = "src/lib.rs"
+
+[[bin]]
+name = "nightmanager"
+path = "src/bin/nightmanager/main.rs"
+
+[[bin]]
+name = "nightmanager-daemon"
+path = "src/bin/nightmanager-daemon.rs"
+
+[dependencies]
+anyhow = "1"
+async-channel = "2"
+chrono = { version = "0.4", features = ["clock", "serde"] }
+gio = { version = "0.20", features = ["v2_72"] }
+glib = { version = "0.20", features = ["v2_72"] }
+libc = "0.2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+gtk = { version = "0.9", package = "gtk4", features = ["v4_10"] }
+adw = { version = "0.7", package = "libadwaita", features = ["v1_5"] }
+
+[profile.release]
+lto = true
+
+[profile.release-dev]
+inherits = "release"
+opt-level = 2
+lto = false
+incremental = true
+codegen-units = 256

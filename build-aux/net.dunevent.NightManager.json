@@ -1,0 +1,108 @@
+{
+    "app-id": "net.dunevent.NightManager",
+    "runtime": "org.gnome.Platform",
+    "runtime-version": "51",
+    "sdk": "org.gnome.Sdk",
+    "sdk-extensions": [
+        "org.freedesktop.Sdk.Extension.rust-stable"
+    ],
+    "command": "nightmanager",
+    "finish-args": [
+        "--share=ipc",
+        "--socket=wayland",
+        "--socket=fallback-x11",
+        "--device=dri",
+        "--talk-name=ca.desrt.dconf",
+        "--filesystem=xdg-run/dconf",
+        "--filesystem=~/.config/dconf:ro",
+        "--env=DCONF_USER_CONFIG_DIR=.config/dconf",
+        "--env=GIO_EXTRA_MODULES=/app/lib/gio/modules",
+        "--env=GSETTINGS_BACKEND=dconf",
+        "--talk-name=org.gnome.ScreenSaver",
+        "--talk-name=org.gnome.Mutter.DisplayConfig",
+        "--talk-name=org.gnome.SettingsDaemon.Color",
+        "--talk-name=org.gnome.SettingsDaemon.Power",
+        "--talk-name=org.sigxcpu.Feedback",
+        "--system-talk-name=de.seath.Waked",
+        "--system-talk-name=net.hadess.SensorProxy",
+        "--filesystem=host-os:ro",
+        "--filesystem=xdg-data/themes:ro",
+        "--filesystem=xdg-data/icons:ro",
+        "--filesystem=~/.themes:ro",
+        "--filesystem=~/.icons:ro",
+        "--filesystem=xdg-config/nightmanager:ro",
+        "--filesystem=xdg-config/systemd/user:ro",
+        "--filesystem=~/.local/state/nightmanager:ro"
+    ],
+    "build-options": {
+        "append-path": "/usr/lib/sdk/rust-stable/bin"
+    },
+    "modules": [
+        {
+            "name": "dconf",
+            "buildsystem": "meson",
+            "config-opts": [
+                "-Dbash_completion=false",
+                "-Dman=false",
+                "-Dvapi=false",
+                "-Dsystemduserunitdir=/app/lib/systemd/user"
+            ],
+            "cleanup": [
+                "/bin",
+                "/include",
+                "/lib/pkgconfig",
+                "/lib/systemd",
+                "/libexec",
+                "/share/dbus-1"
+            ],
+            "sources": [
+                {
+                    "type": "git",
+                    "url": "https://gitlab.gnome.org/GNOME/dconf.git",
+                    "tag": "51.0",
+                    "commit": "264e6598863fc1d9ad6edb4c58d86f82ea669927"
+                },
+                {
+                    "type": "patch",
+                    "path": "dconf-user-config-dir.patch"
+                }
+            ]
+        },
+        {
+            "name": "nightmanager",
+            "buildsystem": "simple",
+            "build-options": {
+                "build-args": [
+                    "--share=network"
+                ],
+                "env": {
+                    "CARGO_HOME": "/run/build/nightmanager/cargo"
+                }
+            },
+            "build-commands": [
+                "cargo build --release --locked",
+                "install -Dm755 target/release/nightmanager /app/bin/nightmanager",
+                "install -Dm755 target/release/nightmanager-daemon /app/bin/nightmanager-daemon",
+                "install -Dm644 data/net.dunevent.NightManager.desktop /app/share/applications/net.dunevent.NightManager.desktop",
+                "install -Dm644 data/net.dunevent.NightManager.metainfo.xml /app/share/metainfo/net.dunevent.NightManager.metainfo.xml",
+                "install -Dm644 data/net.dunevent.NightManager.Daemon.service /app/share/dbus-1/services/net.dunevent.NightManager.Daemon.service",
+                "install -Dm644 data/icons/hicolor/scalable/apps/net.dunevent.NightManager.svg /app/share/icons/hicolor/scalable/apps/net.dunevent.NightManager.svg",
+                "install -Dm644 data/icons/hicolor/symbolic/apps/net.dunevent.NightManager-symbolic.svg /app/share/icons/hicolor/symbolic/apps/net.dunevent.NightManager-symbolic.svg",
+                "install -Dm644 -t /app/share/glib-2.0/schemas data/net.dunevent.NightManager.gschema.xml data/schemas/*.gschema.xml",
+                "glib-compile-schemas /app/share/glib-2.0/schemas"
+            ],
+            "sources": [
+                {
+                    "type": "dir",
+                    "path": "..",
+                    "skip": [
+                        "target",
+                        ".flatpak",
+                        ".flatpak-builder",
+                        ".git"
+                    ]
+                }
+            ]
+        }
+    ]
+}
