@@ -197,6 +197,24 @@ gdbus call --session --dest org.gnome.ScreenSaver --object-path /org/gnome/Scree
 check "Night Light applied when the screen turns on" "true" "$(get org.gnome.settings-daemon.plugins.color night-light-enabled)"
 stop_daemon
 
+echo "-- a waiting Night Light change survives a restart"
+new_env
+"$WORK/fake-screensaver" active & PIDS+=("$!"); sleep 0.5
+app screen-off-mode "'wait'"; start_daemon
+call StartNight
+check "Night Light held while off" "false" "$(get org.gnome.settings-daemon.plugins.color night-light-enabled)"
+stop_daemon
+start_daemon
+check "still held after a restart with the screen off" "false" "$(get org.gnome.settings-daemon.plugins.color night-light-enabled)"
+gdbus call --session --dest org.gnome.ScreenSaver --object-path /org/gnome/ScreenSaver \
+  --method test.Control.SetActive false >/dev/null; sleep 0.5
+check "applied when the screen turns on after the restart" "true" "$(get org.gnome.settings-daemon.plugins.color night-light-enabled)"
+stop_daemon
+start_daemon
+check "not applied twice" "true" "$(get org.gnome.settings-daemon.plugins.color night-light-enabled)"
+check "nothing left waiting" "yes" "$(grep -qF '"night_light_due": null' "$XDG_STATE_HOME/nightmanager/state.json" && echo yes || echo no)"
+stop_daemon
+
 echo "-- old package present"
 new_env
 mkdir -p "$HOME/.config/systemd/user/timers.target.wants" "$HOME/.config/nightmanager" \

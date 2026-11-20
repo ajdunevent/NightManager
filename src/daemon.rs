@@ -16,7 +16,7 @@ use crate::keys::{parse_value, print_value, HostKey, COLOR_SCHEMA};
 use crate::legacy;
 use crate::schedule::{hours_to_time, Boundary, Event, Weekly};
 use crate::screen::Screen;
-use crate::state::State;
+use crate::state::{NightLightChange, State};
 use crate::triggers;
 use crate::wake_timer::WallClockTimer;
 
@@ -169,6 +169,16 @@ impl Daemon {
         daemon.register_object()?;
         daemon.refresh_triggers();
         if !daemon.blocked.get() {
+            let due = daemon.state.borrow().night_light_due.clone();
+            match due {
+                Some(NightLightChange::Set(text)) => {
+                    if let Some(value) = parse_value(HostKey::NightLight, &text) {
+                        daemon.write(HostKey::NightLight, value);
+                    }
+                }
+                Some(NightLightChange::Restore(saved)) => daemon.restore(HostKey::NightLight, saved),
+                None => {}
+            }
             daemon.catch_up(Local::now());
         }
         daemon.reschedule();
@@ -394,22 +404,29 @@ impl Daemon {
 
     fn write(self: &Rc<Self>, key: HostKey, value: glib::Variant) {
         let this = self.clone();
-        self.change(key, move || {
+        let due = NightLightChange::Set(print_value(&value));
+        self.change(key, due, move || {
             this.host.set(key, &value);
         });
     }
 
     fn restore(self: &Rc<Self>, key: HostKey, saved: Option<String>) {
         let this = self.clone();
-        self.change(key, move || this.host.restore(key, &saved));
+        let due = NightLightChange::Restore(saved.clone());
+        self.change(key, due, move || this.host.restore(key, &saved));
     }
 
     /// Runs a host change. Night Light changes wait for the screen or wake it, since
     /// a change made while the panel is off can leave the display's PQ service stuck.
-    fn change(self: &Rc<Self>, key: HostKey, apply: impl FnOnce() + 'static) {
+    /// A waiting Night Light change is saved, so a restart doesn't drop it.
+    fn change(self: &Rc<Self>, key: HostKey, due: NightLightChange, apply: impl FnOnce() + 'static) {
         let this = self.clone();
         let apply = move || {
             apply();
+            if key == HostKey::NightLight && this.state.borrow().night_light_due.is_some() {
+                this.state.borrow_mut().night_light_due = None;
+                this.save_state();
+            }
             this.refresh_trigger(key);
         };
         let screen = self.screen.borrow().clone();
@@ -417,6 +434,8 @@ impl Daemon {
             apply();
             return;
         };
+        self.state.borrow_mut().night_light_due = Some(due);
+        self.save_state();
         match self.config.borrow().screen_off_mode {
             ScreenOffMode::WakeBriefly => screen.wake_briefly(apply),
             ScreenOffMode::WaitForScreen => {

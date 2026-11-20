@@ -19,6 +19,17 @@ pub struct State {
     pub last_boundary: Option<i64>,
     #[serde(default)]
     pub legacy_imported: bool,
+    #[serde(default)]
+    pub night_light_due: Option<NightLightChange>,
+}
+
+/// A Night Light change still waiting for the screen.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub enum NightLightChange {
+    /// A value as `Variant::print` text.
+    Set(String),
+    /// A saved day value, as in `State::day`.
+    Restore(Option<String>),
 }
 
 impl State {
@@ -61,6 +72,7 @@ mod tests {
         };
         s.day.insert(HostKey::AccentColor, Some("'blue'".into()));
         s.day.insert(HostKey::NightLight, None);
+        s.night_light_due = Some(NightLightChange::Restore(Some("false".into())));
         s.save(&path).unwrap();
         assert_eq!(State::load(&path), s);
         fs::remove_dir_all(dir).ok();

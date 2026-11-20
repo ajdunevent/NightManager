@@ -3,6 +3,13 @@ use nightmanager::config::DAEMON_BUS_NAME;
 use nightmanager::daemon::Daemon;
 
 fn main() -> glib::ExitCode {
+    // With huge pages set to "always", each thread's malloc arena became a
+    // resident 2 MiB page: 12 of 17 MiB on the FLX1s. Has to run before any
+    // thread starts.
+    // SAFETY: plain prctl with integer arguments.
+    unsafe {
+        libc::prctl(libc::PR_SET_THP_DISABLE, 1, 0, 0, 0);
+    }
     tracing_subscriber::fmt()
         .with_env_filter(
             tracing_subscriber::EnvFilter::try_from_default_env()
