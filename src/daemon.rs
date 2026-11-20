@@ -66,6 +66,7 @@ pub struct Daemon {
     /// A Night Light change waiting for the screen to turn on.
     pending_night_light: RefCell<Option<Deferred>>,
     reload_queued: Cell<bool>,
+    caps: RefCell<Rc<Cell<Capabilities>>>,
 }
 
 /// Without the dconf patch, sandboxed writes reached the host while every read
@@ -104,6 +105,16 @@ impl Daemon {
             trigger_state: RefCell::default(),
             pending_night_light: RefCell::default(),
             reload_queued: Cell::new(false),
+            caps: RefCell::default(),
+        });
+
+        let weak = Rc::downgrade(&daemon);
+        *daemon.caps.borrow_mut() = crate::capabilities::watch(conn, move || {
+            if let Some(d) = weak.upgrade() {
+                if !d.blocked.get() && d.state.borrow().active {
+                    d.reconcile_night();
+                }
+            }
         });
 
         if legacy::installed() {
@@ -175,6 +186,10 @@ impl Daemon {
         {
             tracing::debug!(%err, "DaytimeChanged not sent");
         }
+    }
+
+    fn caps(&self) -> Capabilities {
+        self.caps.borrow().get()
     }
 
     fn weekly(&self) -> Weekly {
@@ -284,8 +299,7 @@ impl Daemon {
 
     /// The configured night values, without features this device lacks.
     fn night_values(&self) -> Vec<(HostKey, glib::Variant)> {
-        let caps = Capabilities::detect(&self.conn);
-        tracing::debug!(?caps, "capabilities");
+        let caps = self.caps();
         self.config
             .borrow()
             .night_values()
@@ -319,7 +333,7 @@ impl Daemon {
 
     /// The flag marks saved values that apply when night ends.
     fn daytime_values(&self) -> Vec<(String, glib::Variant, bool)> {
-        let caps = Capabilities::detect(&self.conn);
+        let caps = self.caps();
         let state = self.state.borrow();
         HostKey::ALL
             .into_iter()
@@ -515,14 +529,17 @@ impl Daemon {
 
     /// Brings an active night in line with a changed configuration: keys no longer
     /// managed get their day value back, and new or changed ones are applied.
+    /// A key whose service went away stays saved, so the morning still restores it.
     fn reconcile_night(self: &Rc<Self>) {
+        let configured: Vec<HostKey> =
+            self.config.borrow().night_values().into_iter().map(|(k, _)| k).collect();
         let night: HashMap<HostKey, glib::Variant> = self.night_values().into_iter().collect();
         let dropped: Vec<(HostKey, Option<String>)> = {
             let mut state = self.state.borrow_mut();
             let keys: Vec<HostKey> = state
                 .day
                 .keys()
-                .filter(|k| !night.contains_key(k))
+                .filter(|k| !configured.contains(k))
                 .copied()
                 .collect();
             keys.into_iter()
@@ -640,7 +657,12 @@ impl Daemon {
                 changed.insert_value(name, &v);
             }
         }
-        let args = (DAEMON_INTERFACE, changed.end(), Vec::<String>::new()).to_variant();
+        // A tuple built with to_variant boxes the dict as `v`, giving `(svas)`.
+        let args = glib::Variant::tuple_from_iter([
+            DAEMON_INTERFACE.to_variant(),
+            changed.end(),
+            Vec::<String>::new().to_variant(),
+        ]);
         if let Err(err) = self.conn.emit_signal(
             None,
             DAEMON_OBJECT_PATH,

@@ -14,7 +14,6 @@
         "--device=dri",
         "--talk-name=ca.desrt.dconf",
         "--filesystem=xdg-run/dconf",
-        "--filesystem=~/.config/dconf:ro",
         "--env=DCONF_USER_CONFIG_DIR=.config/dconf",
         "--env=GIO_EXTRA_MODULES=/app/lib/gio/modules",
         "--env=GSETTINGS_BACKEND=dconf",
@@ -26,13 +25,7 @@
         "--system-talk-name=de.seath.Waked",
         "--system-talk-name=net.hadess.SensorProxy",
         "--filesystem=host-os:ro",
-        "--filesystem=xdg-data/themes:ro",
-        "--filesystem=xdg-data/icons:ro",
-        "--filesystem=~/.themes:ro",
-        "--filesystem=~/.icons:ro",
-        "--filesystem=xdg-config/nightmanager:ro",
-        "--filesystem=xdg-config/systemd/user:ro",
-        "--filesystem=~/.local/state/nightmanager:ro"
+        "--filesystem=home:ro"
     ],
     "build-options": {
         "append-path": "/usr/lib/sdk/rust-stable/bin"

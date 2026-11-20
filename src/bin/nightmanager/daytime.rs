@@ -11,7 +11,7 @@ use nightmanager::keys::HostKey;
 use nightmanager::themes;
 
 use crate::client::Client;
-use crate::pictures;
+use crate::rows::{self, Choice};
 
 struct Day {
     key: HostKey,
@@ -50,14 +50,15 @@ pub fn show(parent: &adw::ApplicationWindow, client: Option<Client>) {
 }
 
 async fn from_daemon(client: &Client) -> Option<Vec<Day>> {
-    let reply = client.call("GetDaytime").await?;
+    let reply = client.call_timeout("GetDaytime", None, 3000).await?;
     let (items,) = reply.get::<(Vec<(String, glib::Variant, bool)>,)>()?;
     Some(
         items
             .into_iter()
             .filter_map(|(name, value, at_morning)| {
+                let key = HostKey::from_name(&name).filter(|k| shown(*k))?;
                 Some(Day {
-                    key: HostKey::from_name(&name)?,
+                    key,
                     value,
                     at_morning,
                 })
@@ -70,7 +71,7 @@ async fn from_host() -> Vec<Day> {
     let caps = Capabilities::detect_async().await;
     HostKey::ALL
         .into_iter()
-        .filter(|key| caps.allows(*key))
+        .filter(|key| caps.allows(*key) && shown(*key))
         .filter_map(|key| {
             Some(Day {
                 key,
@@ -79,6 +80,10 @@ async fn from_host() -> Vec<Day> {
             })
         })
         .collect()
+}
+
+fn shown(key: HostKey) -> bool {
+    !matches!(key, HostKey::Wallpaper | HostKey::WallpaperDark | HostKey::LockScreen)
 }
 
 fn host_settings(key: HostKey) -> Option<gio::Settings> {
@@ -242,13 +247,6 @@ fn make_row(day: &Day, d: &Rc<Dialog>) -> Row {
         };
     }
 
-    match key {
-        HostKey::Wallpaper | HostKey::WallpaperDark | HostKey::LockScreen => {
-            return picture_row(key, apply);
-        }
-        _ => {}
-    }
-
     let (title, options): (&str, Vec<(String, String)>) = match key {
         HostKey::ColorScheme => (
             "Style",
@@ -258,94 +256,18 @@ fn make_row(day: &Day, d: &Rc<Dialog>) -> Row {
                 ("prefer-light".into(), "Light".into()),
             ],
         ),
-        HostKey::AccentColor => ("Accent Color", labeled(themes::accent_colors(), capitalize)),
-        HostKey::GtkTheme => ("Legacy Theme (GTK3)", labeled(themes::gtk3_themes(), str::to_string)),
-        HostKey::IconTheme => ("Icon Theme", labeled(themes::icon_themes(), str::to_string)),
+        HostKey::AccentColor => ("Accent Color", rows::labeled(themes::accent_colors(), rows::capitalize)),
+        HostKey::GtkTheme => ("Legacy Theme (GTK3)", rows::labeled(themes::gtk3_themes(), str::to_string)),
+        HostKey::IconTheme => ("Icon Theme", rows::labeled(themes::icon_themes(), str::to_string)),
         _ => (
             "Feedback",
-            labeled(vec!["full".into(), "quiet".into(), "silent".into()], capitalize),
+            rows::labeled(vec!["full".into(), "quiet".into(), "silent".into()], rows::capitalize),
         ),
     };
-    let list = gtk::StringList::new(&options.iter().map(|(_, l)| l.as_str()).collect::<Vec<_>>());
-    let values: Rc<RefCell<Vec<String>>> =
-        Rc::new(RefCell::new(options.into_iter().map(|(v, _)| v).collect()));
-    let row = adw::ComboRow::builder().title(title).model(&list).build();
-    row.connect_selected_notify({
-        let values = values.clone();
-        move |row| {
-            if let Some(v) = values.borrow().get(row.selected() as usize) {
-                apply(v.to_variant());
-            }
-        }
-    });
-    let r = row.clone();
+    let choice = Choice::new(title, options, move |v| apply(v.to_variant()));
     Row {
         key,
-        widget: row.upcast(),
-        update: Box::new(move |v| {
-            let current = v.str().unwrap_or_default().to_string();
-            let index = values.borrow().iter().position(|x| *x == current);
-            let index = index.unwrap_or_else(|| {
-                // Themes installed after the dialog opened aren't in the list.
-                list.append(&current);
-                values.borrow_mut().push(current);
-                values.borrow().len() - 1
-            });
-            if r.selected() != index as u32 {
-                r.set_selected(index as u32);
-            }
-        }),
+        widget: choice.row.clone().upcast(),
+        update: Box::new(move |v| choice.set(v.str().unwrap_or_default())),
     }
-}
-
-fn picture_row(key: HostKey, apply: impl Fn(glib::Variant) + Clone + 'static) -> Row {
-    let (title, role) = match key {
-        HostKey::Wallpaper => ("Wallpaper", "day-wallpaper"),
-        HostKey::WallpaperDark => ("Dark Style Wallpaper", "day-wallpaper-dark"),
-        _ => ("Lock Screen", "day-lock-screen"),
-    };
-    let row = adw::ActionRow::builder().title(title).build();
-    let thumb = pictures::Thumb::new();
-    let choose = gtk::Button::builder()
-        .label("Choose…")
-        .valign(gtk::Align::Center)
-        .build();
-    let clear = gtk::Button::builder()
-        .icon_name("edit-clear-symbolic")
-        .tooltip_text("No Picture")
-        .valign(gtk::Align::Center)
-        .css_classes(["flat"])
-        .build();
-    row.add_suffix(&thumb.none);
-    row.add_suffix(&thumb.frame);
-    row.add_suffix(&choose);
-    row.add_suffix(&clear);
-    choose.connect_clicked({
-        let apply = apply.clone();
-        move |button| {
-            let (apply, parent) = (apply.clone(), pictures::window_of(button));
-            glib::spawn_future_local(async move {
-                if let Some(uri) = pictures::choose(parent, role).await {
-                    apply(uri.to_variant());
-                }
-            });
-        }
-    });
-    clear.connect_clicked(move |_| apply("".to_variant()));
-    Row {
-        key,
-        widget: row,
-        update: Box::new(move |v| thumb.show(v.str().unwrap_or_default())),
-    }
-}
-
-fn labeled(items: Vec<String>, label: fn(&str) -> String) -> Vec<(String, String)> {
-    items.into_iter().map(|i| (i.clone(), label(&i))).collect()
-}
-
-fn capitalize(s: &str) -> String {
-    let mut c = s.chars();
-    c.next()
-        .map(|f| f.to_uppercase().chain(c).collect())
-        .unwrap_or_default()
 }

@@ -1,5 +1,8 @@
 //! Which of the optional features this device has.
 
+use std::cell::Cell;
+use std::rc::Rc;
+
 use gio::prelude::*;
 
 use crate::keys::HostKey;
@@ -47,6 +50,87 @@ impl Capabilities {
             feedback: has_service_async(&session, FEEDBACK_SERVICE).await,
         }
     }
+}
+
+/// Follows the services behind each capability, so a service starting after
+/// the daemon (gsd at login) is picked up. `on_gain` runs when one appears.
+pub fn watch(session: &gio::DBusConnection, on_gain: impl Fn() + 'static) -> Rc<Cell<Capabilities>> {
+    #[derive(Clone, Copy, Default)]
+    struct Seen {
+        night_light: bool,
+        power: bool,
+        feedback: bool,
+        ambient_sensor: bool,
+    }
+    let initial = Capabilities::detect(session);
+    let seen = Rc::new(Cell::new(Seen {
+        night_light: initial.night_light,
+        power: has_service(session, POWER_SERVICE),
+        feedback: initial.feedback,
+        ambient_sensor: has_ambient_light(),
+    }));
+    let current = Rc::new(Cell::new(initial));
+    let on_gain = Rc::new(on_gain);
+    let update = {
+        let (seen, current, on_gain) = (seen.clone(), current.clone(), on_gain.clone());
+        Rc::new(move |edit: &dyn Fn(&mut Seen)| {
+            let mut s = seen.get();
+            edit(&mut s);
+            seen.set(s);
+            let caps = Capabilities {
+                night_light: s.night_light,
+                ambient_light: s.power && s.ambient_sensor,
+                feedback: s.feedback,
+            };
+            let before = current.replace(caps);
+            if before != caps {
+                tracing::info!(?caps, "capabilities changed");
+                let gained = (caps.night_light && !before.night_light)
+                    || (caps.ambient_light && !before.ambient_light)
+                    || (caps.feedback && !before.feedback);
+                if gained {
+                    on_gain();
+                }
+            }
+        })
+    };
+
+    let session_watch = |name: &'static str, field: fn(&mut Seen) -> &mut bool| {
+        let (up, down) = (update.clone(), update.clone());
+        let _ = gio::bus_watch_name_on_connection(
+            session,
+            name,
+            gio::BusNameWatcherFlags::NONE,
+            move |_, _, _| up(&|s| *field(s) = true),
+            move |_, _| down(&|s| *field(s) = false),
+        );
+    };
+    session_watch(NIGHT_LIGHT_SERVICE, |s| &mut s.night_light);
+    session_watch(POWER_SERVICE, |s| &mut s.power);
+    session_watch(FEEDBACK_SERVICE, |s| &mut s.feedback);
+
+    // gio-rs panics in bus_watch_name's vanished callback when the bus can't
+    // be reached, so the watch is set up on a connection that exists.
+    glib::spawn_future_local(async move {
+        let Ok(system) = gio::bus_get_future(gio::BusType::System).await else {
+            return;
+        };
+        let (up, down) = (update.clone(), update);
+        let _ = gio::bus_watch_name_on_connection(
+            &system,
+            SENSOR_PROXY,
+            gio::BusNameWatcherFlags::NONE,
+            move |_, _, _| {
+                let up = up.clone();
+                glib::spawn_future_local(async move {
+                    let has = has_ambient_light_async().await;
+                    up(&|s| s.ambient_sensor = has);
+                });
+            },
+            move |_, _| down(&|s| s.ambient_sensor = false),
+        );
+    });
+    current
 }
 
 fn name_has_owner_args(name: &str) -> glib::Variant {

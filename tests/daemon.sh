@@ -249,6 +249,39 @@ check "night light still applied" "true" "$(get org.gnome.settings-daemon.plugin
 call EndNight
 stop_daemon
 
+echo "-- property change signal"
+new_env; start_daemon
+gdbus monitor --session "${DEST[@]:0:2}" >"$WORK/props.log" 2>&1 & MON=$!
+sleep 0.3
+call StartNight
+sleep 0.3
+kill "$MON" 2>/dev/null; wait "$MON" 2>/dev/null
+check "PropertiesChanged carries a{sv}" "yes" "$(grep -F "PropertiesChanged ('net.dunevent.NightManager.Daemon', {" "$WORK/props.log" | grep -qF "'Active': <true>" && echo yes || echo no)"
+call EndNight
+stop_daemon
+
+echo "-- no system bus"
+new_env bare
+DBUS_SYSTEM_BUS_ADDRESS=unix:path=/nonexistent start_daemon
+sleep 0.5
+check "daemon keeps running" "running" "$(kill -0 "$DAEMON_PID" 2>/dev/null && ps -o stat= -p "$DAEMON_PID" | grep -qv Z && echo running || echo gone)"
+stop_daemon
+
+echo "-- a service appearing or leaving at night"
+new_env bare
+start_daemon
+call StartNight
+check "night light skipped without gsd" "false" "$(get org.gnome.settings-daemon.plugins.color night-light-enabled)"
+"$WORK/fake-services" org.gnome.SettingsDaemon.Color & GSD=$!
+sleep 0.6
+check "night light applied once gsd appears" "true" "$(get org.gnome.settings-daemon.plugins.color night-light-enabled)"
+kill "$GSD"; wait "$GSD" 2>/dev/null
+sleep 0.4
+check "night light kept when gsd leaves" "true" "$(get org.gnome.settings-daemon.plugins.color night-light-enabled)"
+call EndNight
+check "night light restored in the morning" "false" "$(get org.gnome.settings-daemon.plugins.color night-light-enabled)"
+stop_daemon
+
 echo "-- daytime settings"
 daytime() {
   gdbus call --session "${DEST[@]}" --method "$IFACE.SetDaytime" "$1" "$2" 2>&1 | tr -d '\n'

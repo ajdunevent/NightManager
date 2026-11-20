@@ -27,9 +27,7 @@ impl Client {
             DAEMON_INTERFACE,
         )
         .await?;
-        let client = Client { proxy };
-        client.call("Reload").await;
-        Ok(client)
+        Ok(Client { proxy })
     }
 
     pub fn status(&self) -> Status {
@@ -78,9 +76,18 @@ impl Client {
     }
 
     pub async fn call_with(&self, method: &str, args: Option<&glib::Variant>) -> Option<glib::Variant> {
+        self.call_timeout(method, args, -1).await
+    }
+
+    pub async fn call_timeout(
+        &self,
+        method: &str,
+        args: Option<&glib::Variant>,
+        timeout_ms: i32,
+    ) -> Option<glib::Variant> {
         match self
             .proxy
-            .call_future(method, args, gio::DBusCallFlags::NONE, -1)
+            .call_future(method, args, gio::DBusCallFlags::NONE, timeout_ms)
             .await
         {
             Ok(v) => Some(v),

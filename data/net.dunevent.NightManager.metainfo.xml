@@ -36,6 +36,19 @@
     <control>touch</control>
   </supports>
   <releases>
+    <release version="0.1.3" date="2026-11-20">
+      <description>
+        <p>Fixes for the app getting out of step with the background service.</p>
+        <ul>
+          <li>The Night Mode switch and status now update when night mode changes outside the app</li>
+          <li>Night Light, automatic brightness and feedback are applied when their service starts after night mode does</li>
+          <li>Choosing a picture no longer locks the window, and the picture on screen is never deleted</li>
+          <li>The Night Mode switch goes back and says so when the background service doesn't respond</li>
+          <li>Chosen pictures are used where they are instead of being copied, and shown by file name instead of a preview</li>
+          <li>Wallpaper and lock screen are no longer in Daytime Settings</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.1.2" date="2026-11-18">
       <description>
         <p>Night mode can now change the wallpaper and the lock screen picture.</p>

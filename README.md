@@ -18,8 +18,8 @@ settings back. Built for the FuriLabs FLX1s with Phosh, and usable on GNOME.
 
 Each one is optional. The values in effect when night mode starts are saved and
 put back when it ends. A night wallpaper is set for both the default and the
-dark style, so it shows whichever style is on. Chosen pictures are copied into
-the app's data folder, where Phosh can read them. With **Keep Theme Changes Made at Night** on, an accent,
+dark style, so it shows whichever style is on. Chosen pictures are used where
+they are, so moving or deleting one leaves the wallpaper without it. With **Keep Theme Changes Made at Night** on, an accent,
 theme or icon change you make at night becomes the night value.
 
 Rows for features the device lacks (no feedbackd, no Night Light) are hidden.

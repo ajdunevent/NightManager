@@ -1,7 +1,13 @@
+mod background;
 mod client;
 mod daytime;
+mod night;
 mod pictures;
+mod rows;
+mod schedule;
+mod screen_off;
 mod time_row;
+mod triggers;
 mod window;
 
 use adw::prelude::*;
