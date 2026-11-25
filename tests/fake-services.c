@@ -1,7 +1,8 @@
 /* Owns the bus names given as arguments, standing in for gsd, feedbackd and
    iio-sensor-proxy in tests/daemon.sh. net.hadess.SensorProxy also gets a
-   HasAmbientLight property, false when FAKE_NO_AMBIENT_LIGHT is set. --system
-   uses the system bus. */
+   HasAmbientLight property, false when FAKE_NO_AMBIENT_LIGHT is set, and
+   org.gnome.SettingsDaemon.Color fixed Sunset and Sunrise. --system uses the
+   system bus. */
 
 #include <gio/gio.h>
 #include <string.h>
@@ -13,6 +14,14 @@ static const gchar sensor_xml[] =
     " </interface>"
     "</node>";
 
+static const gchar color_xml[] =
+    "<node>"
+    " <interface name='org.gnome.SettingsDaemon.Color'>"
+    "  <property name='Sunset' type='d' access='read'/>"
+    "  <property name='Sunrise' type='d' access='read'/>"
+    " </interface>"
+    "</node>";
+
 static GVariant *
 get_property(GDBusConnection *conn, const gchar *sender, const gchar *path,
              const gchar *iface, const gchar *name, GError **error, gpointer data)
@@ -20,6 +29,10 @@ get_property(GDBusConnection *conn, const gchar *sender, const gchar *path,
     (void)conn; (void)sender; (void)path; (void)iface; (void)error; (void)data;
     if (g_strcmp0(name, "HasAmbientLight") == 0)
         return g_variant_new_boolean(g_getenv("FAKE_NO_AMBIENT_LIGHT") == NULL);
+    if (g_strcmp0(name, "Sunset") == 0)
+        return g_variant_new_double(17.25);
+    if (g_strcmp0(name, "Sunrise") == 0)
+        return g_variant_new_double(7.5);
     return NULL;
 }
 
@@ -44,6 +57,11 @@ main(int argc, char **argv)
         if (strcmp(argv[i], "net.hadess.SensorProxy") == 0) {
             g_autoptr(GDBusNodeInfo) info = g_dbus_node_info_new_for_xml(sensor_xml, &error);
             g_dbus_connection_register_object(conn, "/net/hadess/SensorProxy",
+                                              info->interfaces[0], &vtable, NULL, NULL, &error);
+        }
+        if (strcmp(argv[i], "org.gnome.SettingsDaemon.Color") == 0) {
+            g_autoptr(GDBusNodeInfo) info = g_dbus_node_info_new_for_xml(color_xml, &error);
+            g_dbus_connection_register_object(conn, "/org/gnome/SettingsDaemon/Color",
                                               info->interfaces[0], &vtable, NULL, NULL, &error);
         }
         g_bus_own_name_on_connection(conn, argv[i], G_BUS_NAME_OWNER_FLAGS_NONE,

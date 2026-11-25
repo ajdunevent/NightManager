@@ -2,11 +2,12 @@ use std::cell::{Cell, RefCell};
 use std::rc::Rc;
 
 use adw::prelude::*;
-use chrono::{DateTime, Datelike, Local};
+use chrono::Local;
 use nightmanager::config::APP_ID;
+use nightmanager::status;
 
 use crate::client::{Client, Status};
-use crate::schedule::DAYS;
+use crate::rows;
 
 struct Ui {
     client: RefCell<Option<Client>>,
@@ -14,6 +15,7 @@ struct Ui {
     banner: adw::Banner,
     page: adw::PreferencesPage,
     status_row: adw::SwitchRow,
+    clock: Option<gio::Settings>,
     /// Set while the status row shows the daemon's state, so it isn't sent back.
     quiet: Cell<bool>,
 }
@@ -31,7 +33,10 @@ impl Ui {
         self.quiet.set(true);
         self.status_row.set_active(status.active);
         self.quiet.set(false);
-        self.status_row.set_subtitle(&describe_next(status));
+        let detail = status
+            .schedule()
+            .detail(Local::now().date_naive(), status::clock_24h(self.clock.as_ref()));
+        self.status_row.set_subtitle(&rows::capitalize(&detail));
         self.banner.set_revealed(status.legacy_installed);
         self.page.set_sensitive(!status.legacy_installed);
     }
@@ -46,33 +51,6 @@ impl Ui {
                 ui.toast("The background service didn't respond");
             }
         });
-    }
-}
-
-fn describe_next(status: Status) -> String {
-    if status.next_change == 0 {
-        return if status.active {
-            "On until turned off".into()
-        } else {
-            "No scheduled start".into()
-        };
-    }
-    let Some(at) = DateTime::from_timestamp(status.next_change, 0) else {
-        return String::new();
-    };
-    let at = at.with_timezone(&Local);
-    let today = Local::now().date_naive();
-    let day = match (at.date_naive() - today).num_days() {
-        0 => String::new(),
-        1 => " tomorrow".into(),
-        _ => format!(" {}", DAYS[at.weekday().num_days_from_monday() as usize]),
-    };
-    let time = at.format("%H:%M");
-    match (status.active, status.next_is_start) {
-        (true, false) => format!("On until {time}{day}"),
-        (false, true) => format!("Starts at {time}{day}"),
-        (true, true) => format!("On; next start at {time}{day}"),
-        (false, false) => format!("Off; next end at {time}{day}"),
     }
 }
 
@@ -96,8 +74,19 @@ pub fn build(app: &adw::Application) -> adw::ApplicationWindow {
         banner: banner.clone(),
         page: page.clone(),
         status_row: status_row.clone(),
+        clock: status::clock_settings(),
         quiet: Cell::new(false),
     });
+    if let Some(clock) = &ui.clock {
+        let weak = Rc::downgrade(&ui);
+        clock.connect_changed(Some("clock-format"), move |_, _| {
+            if let Some(ui) = weak.upgrade() {
+                if let Some(client) = ui.client() {
+                    ui.show_status(client.status());
+                }
+            }
+        });
+    }
 
     let status_group = adw::PreferencesGroup::new();
     status_group.add(&status_row);

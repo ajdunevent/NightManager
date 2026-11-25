@@ -1,0 +1,9 @@
+target
+dist
+_build
+build
+.flatpak
+.flatpak-builder
+flatpak-build
+repo
+vendor

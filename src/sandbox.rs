@@ -85,6 +85,27 @@ pub async fn request_autostart(autostart: bool) -> anyhow::Result<bool> {
     }
 }
 
+pub fn set_background_status(conn: &gio::DBusConnection, message: &str) {
+    let options = glib::VariantDict::new(None);
+    options.insert("message", message);
+    conn.call(
+        Some(PORTAL_BUS_NAME),
+        PORTAL_OBJECT_PATH,
+        BACKGROUND_INTERFACE,
+        "SetStatus",
+        Some(&glib::Variant::tuple_from_iter([options.end()])),
+        None,
+        gio::DBusCallFlags::NONE,
+        -1,
+        gio::Cancellable::NONE,
+        |result| {
+            if let Err(err) = result {
+                tracing::debug!(%err, "background status not set");
+            }
+        },
+    );
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

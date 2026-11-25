@@ -17,6 +17,7 @@ use crate::legacy;
 use crate::schedule::{hours_to_time, Boundary, Event, Weekly};
 use crate::screen::Screen;
 use crate::state::{NightLightChange, State};
+use crate::status::{self, Status};
 use crate::triggers;
 use crate::wake_timer::WallClockTimer;
 
@@ -42,6 +43,7 @@ const INTROSPECTION: &str = r#"
     <property name="Active" type="b" access="read"/>
     <property name="NextChange" type="x" access="read"/>
     <property name="NextIsStart" type="b" access="read"/>
+    <property name="NextIsSolar" type="b" access="read"/>
     <property name="LegacyInstalled" type="b" access="read"/>
   </interface>
 </node>
@@ -67,6 +69,10 @@ pub struct Daemon {
     pending_night_light: RefCell<Option<Deferred>>,
     reload_queued: Cell<bool>,
     caps: RefCell<Rc<Cell<Capabilities>>>,
+    solar: Cell<bool>,
+    clock: Option<gio::Settings>,
+    midnight: RefCell<Option<WallClockTimer>>,
+    portal_status: RefCell<String>,
 }
 
 /// Without the dconf patch, sandboxed writes reached the host while every read
@@ -106,6 +112,10 @@ impl Daemon {
             pending_night_light: RefCell::default(),
             reload_queued: Cell::new(false),
             caps: RefCell::default(),
+            solar: Cell::new(false),
+            clock: status::clock_settings(),
+            midnight: RefCell::default(),
+            portal_status: RefCell::default(),
         });
 
         let weak = Rc::downgrade(&daemon);
@@ -145,6 +155,21 @@ impl Daemon {
             daemon.host.connect_changed(key, move |key, value| {
                 if let Some(d) = weak.upgrade() {
                     d.on_host_changed(key, value);
+                }
+            });
+        }
+
+        let weak = Rc::downgrade(&daemon);
+        *daemon.midnight.borrow_mut() = Some(WallClockTimer::new(move || {
+            if let Some(d) = weak.upgrade() {
+                d.update_status();
+            }
+        })?);
+        if let Some(clock) = &daemon.clock {
+            let weak = Rc::downgrade(&daemon);
+            clock.connect_changed(Some("clock-format"), move |_, _| {
+                if let Some(d) = weak.upgrade() {
+                    d.update_status();
                 }
             });
         }
@@ -204,6 +229,7 @@ impl Daemon {
 
     fn weekly(&self) -> Weekly {
         let config = self.config.borrow();
+        self.solar.set(false);
         match config.schedule_source {
             ScheduleSource::Custom => Weekly {
                 evening: config.evening,
@@ -223,6 +249,7 @@ impl Daemon {
             if let (Some(sunset), Some(sunrise)) =
                 (self.gsd_color_hours("Sunset"), self.gsd_color_hours("Sunrise"))
             {
+                self.solar.set(true);
                 return Weekly::daily(hours_to_time(sunset), hours_to_time(sunrise));
             }
             tracing::debug!("sunrise/sunset unavailable, using Night Light's manual times");
@@ -656,14 +683,12 @@ impl Daemon {
     }
 
     fn property(&self, name: &str) -> Option<glib::Variant> {
-        let next = self.next.borrow();
+        let status = self.status();
         Some(match name {
-            "Active" => self.state.borrow().active.to_variant(),
-            "NextChange" => next.as_ref().map(|e| e.at.timestamp()).unwrap_or(0).to_variant(),
-            "NextIsStart" => next
-                .as_ref()
-                .is_some_and(|e| e.kind == Boundary::Start)
-                .to_variant(),
+            "Active" => status.active.to_variant(),
+            "NextChange" => status.next_change.to_variant(),
+            "NextIsStart" => status.next_is_start.to_variant(),
+            "NextIsSolar" => status.next_is_solar.to_variant(),
             "LegacyInstalled" => self.blocked.get().to_variant(),
             _ => return None,
         })
@@ -671,7 +696,7 @@ impl Daemon {
 
     fn emit_properties(&self) {
         let changed = glib::VariantDict::new(None);
-        for name in ["Active", "NextChange", "NextIsStart", "LegacyInstalled"] {
+        for name in ["Active", "NextChange", "NextIsStart", "NextIsSolar", "LegacyInstalled"] {
             if let Some(v) = self.property(name) {
                 changed.insert_value(name, &v);
             }
@@ -691,6 +716,45 @@ impl Daemon {
         ) {
             tracing::debug!(%err, "PropertiesChanged not sent");
         }
+        self.update_status();
+    }
+
+    fn status(&self) -> Status {
+        let next = self.next.borrow();
+        Status {
+            active: self.state.borrow().active,
+            next_change: next.as_ref().map(|e| e.at.timestamp()).unwrap_or(0),
+            next_is_start: next.as_ref().is_some_and(|e| e.kind == Boundary::Start),
+            next_is_solar: next.is_some() && self.solar.get(),
+        }
+    }
+
+    fn update_status(&self) {
+        let today = Local::now().date_naive();
+        let status = self.status();
+        if let Some(timer) = self.midnight.borrow().as_ref() {
+            let midnight = today
+                .succ_opt()
+                .and_then(|d| d.and_hms_opt(0, 0, 0))
+                .and_then(|t| t.and_local_timezone(Local).earliest());
+            let result = match midnight {
+                Some(at) if status.names_day(today) => timer.arm(at),
+                _ => timer.disarm(),
+            };
+            if let Err(err) = result {
+                tracing::debug!(%err, "arming the midnight timer failed");
+            }
+        }
+        let message = if self.blocked.get() {
+            "Night Mode paused · old package installed".to_string()
+        } else {
+            status.message(today, status::clock_24h(self.clock.as_ref()))
+        };
+        if *self.portal_status.borrow() == message || !crate::sandbox::is_flatpak() {
+            return;
+        }
+        *self.portal_status.borrow_mut() = message.clone();
+        crate::sandbox::set_background_status(&self.conn, &message);
     }
 
     fn register_object(self: &Rc<Self>) -> anyhow::Result<()> {

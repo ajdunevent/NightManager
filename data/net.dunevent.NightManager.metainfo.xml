@@ -36,6 +36,15 @@
     <control>touch</control>
   </supports>
   <releases>
+    <release version="0.1.5" date="2026-11-25">
+      <description>
+        <ul>
+          <li>The background service shows its status in the system's list of background apps</li>
+          <li>Times follow the system's 12- or 24-hour clock setting</li>
+          <li>Night Light's automatic schedule is shown as sunset and sunrise</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.1.4" date="2026-11-20">
       <description>
         <ul>

@@ -300,6 +300,19 @@ call EndNight
 check "night light restored in the morning" "false" "$(get org.gnome.settings-daemon.plugins.color night-light-enabled)"
 stop_daemon
 
+echo "-- sunset and sunrise"
+COLOR=org.gnome.settings-daemon.plugins.color
+new_env; start_daemon
+app evening-times "$(slot '+1 hour')"; sleep 0.5
+check "custom times aren't solar" "false" "$(prop NextIsSolar)"
+host $COLOR night-light-schedule-automatic true
+app schedule-source "'night-light'"; sleep 0.8
+check "night light's automatic schedule is solar" "true" "$(prop NextIsSolar)"
+check "next change is sunset or sunrise" "yes" "$(date -d @"$(prop NextChange | awk '{print $2}')" +%H:%M | grep -qx -e 17:15 -e 07:30 && echo yes || echo no)"
+host $COLOR night-light-schedule-automatic false; sleep 0.5
+check "night light's manual times aren't solar" "false" "$(prop NextIsSolar)"
+stop_daemon
+
 echo "-- daytime settings"
 daytime() {
   gdbus call --session "${DEST[@]}" --method "$IFACE.SetDaytime" "$1" "$2" 2>&1 | tr -d '\n'

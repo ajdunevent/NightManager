@@ -13,7 +13,19 @@ pub struct Status {
     pub active: bool,
     pub next_change: i64,
     pub next_is_start: bool,
+    pub next_is_solar: bool,
     pub legacy_installed: bool,
+}
+
+impl Status {
+    pub fn schedule(&self) -> nightmanager::status::Status {
+        nightmanager::status::Status {
+            active: self.active,
+            next_change: self.next_change,
+            next_is_start: self.next_is_start,
+            next_is_solar: self.next_is_solar,
+        }
+    }
 }
 
 impl Client {
@@ -45,6 +57,7 @@ impl Client {
                 .and_then(|v| v.get::<i64>())
                 .unwrap_or(0),
             next_is_start: b("NextIsStart"),
+            next_is_solar: b("NextIsSolar"),
             legacy_installed: b("LegacyInstalled"),
         }
     }

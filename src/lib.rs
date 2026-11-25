@@ -8,6 +8,7 @@ pub mod sandbox;
 pub mod schedule;
 pub mod screen;
 pub mod state;
+pub mod status;
 pub mod themes;
 pub mod triggers;
 pub mod wake_timer;

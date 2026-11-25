@@ -8,19 +8,10 @@ use chrono::NaiveTime;
 use nightmanager::config::{format_time, parse_time};
 use nightmanager::keys::COLOR_SCHEMA;
 use nightmanager::schedule::hours_to_time;
+use nightmanager::status::DAYS;
 
 use crate::rows::{self, Choice};
 use crate::time_row::time_row;
-
-pub const DAYS: [&str; 7] = [
-    "Monday",
-    "Tuesday",
-    "Wednesday",
-    "Thursday",
-    "Friday",
-    "Saturday",
-    "Sunday",
-];
 
 pub fn group(settings: &gio::Settings) -> adw::PreferencesGroup {
     let s = settings;
